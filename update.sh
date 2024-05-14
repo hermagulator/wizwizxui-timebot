@@ -148,7 +148,7 @@ do
 			exit 1
 			else
 
-			clear
+
 
 			echo -e ' '
 			      echo -e "\e[100mwizwiz panel:\033[0m"
@@ -197,7 +197,7 @@ do
 			sudo rm -r /var/www/html/wizpanel${pathsss}
 			sudo rm -r /var/www/html/wizwizxui-timebot
 			
-			clear
+
 			
 			sleep 1
 			
