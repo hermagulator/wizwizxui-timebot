@@ -288,25 +288,6 @@ $initialSettings = [
   ]
 ];
 
-// بررسی و وارد کردن داده‌ها
-foreach ($initialSettings as $setting) {
-  $query = "SELECT * FROM `setting` WHERE `type` = ?";
-  $stmt = $connection->prepare($query);
-  $stmt->bind_param("s", $setting['type']);
-  $stmt->execute();
-  $result = $stmt->get_result();
-  
-  if ($result->num_rows == 0) {
-      // اگر رکوردی با این نوع وجود نداشت، آن را وارد کن
-      $insertQuery = "INSERT INTO `setting` (`type`, `value`) VALUES (?, ?)";
-      $insertStmt = $connection->prepare($insertQuery);
-      $insertStmt->bind_param("ss", $setting['type'], $setting['value']);
-      $insertStmt->execute();
-      $insertStmt->close();
-  }
-  $stmt->close();
-}
-
 $connection->query("CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `userid` varchar(40) NOT NULL,
