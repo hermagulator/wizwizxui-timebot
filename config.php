@@ -1302,7 +1302,6 @@ function getDiscountCodeKeys(){
     $keys[] = [['text'=>$buttonValues['back_button'],'callback_data'=>"managePanel"]];
     return json_encode(['inline_keyboard'=>$keys]);
 }
-
 function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
     global $connection, $mainValues, $userInfo, $admin;
 
@@ -1423,7 +1422,6 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
         }
     }
 }
-
 function getMainMenuButtonsKeys(){
     global $connection, $mainValues, $buttonValues;
     
