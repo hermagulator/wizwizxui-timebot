@@ -80,7 +80,7 @@ do
 			rm /var/www/html/wizwizxui-timebot/wizwiz.sh
   			rm /var/www/html/wizwizxui-timebot/tempCookie.txt
   			rm /var/www/html/wizwizxui-timebot/settings/messagewizwiz.json
-			clear
+
 			
 			echo -e "\n\e[92mThe script was successfully updated! \033[0m\n"
 			
