@@ -155,33 +155,33 @@ function updateBot() {
     }
 
     // به‌روزرسانی یا اضافه کردن درگاه‌های پرداخت
-    if (isset($nowPaymentKey) && isset($zarinpalId)) {
-        $paymentKeys = array();
-        $paymentKeys['bankAccount'] = $walletwizwiz;
-        $paymentKeys['holderName'] = "";
-        $paymentKeys['nowpayment'] = $nowPaymentKey;
-        $paymentKeys['zarinpal'] = $zarinpalId;
-        $paymentKeys['nextpay'] = "";
-        // اضافه کردن ووچر پرفکت مانی
-        $paymentKeys['PerfectMoneyAccountID'] = $perfectMoneyAccountID ?? "your-account-id";
-        $paymentKeys['PassPhrase'] = $passPhrase ?? "your-passphrase";
-        $paymentKeys['Payee_Account'] = $payeeAccount ?? "your-payee-account";
 
-        $paymentKeysJson = json_encode($paymentKeys);
-        $checkExist = $connection->query("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
-        if (mysqli_num_rows($checkExist) == 0) {
-            $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', ?)");
-            $stmt->bind_param("s", $paymentKeysJson);
-            $stmt->execute();
-            $stmt->close();
-        } else {
-            // به‌روزرسانی رکورد موجود
-            $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'PAYMENT_KEYS'");
-            $stmt->bind_param("s", $paymentKeysJson);
-            $stmt->execute();
-            $stmt->close();
-        }
+    $paymentKeys = array();
+    $paymentKeys['bankAccount'] = $walletwizwiz;
+    $paymentKeys['holderName'] = "";
+    $paymentKeys['nowpayment'] = $nowPaymentKey;
+    $paymentKeys['zarinpal'] = $zarinpalId;
+    $paymentKeys['nextpay'] = "";
+    // اضافه کردن ووچر پرفکت مانی
+    $paymentKeys['PerfectMoneyAccountID'] = $perfectMoneyAccountID ?? "your-account-id";
+    $paymentKeys['PassPhrase'] = $passPhrase ?? "your-passphrase";
+    $paymentKeys['Payee_Account'] = $payeeAccount ?? "your-payee-account";
+
+    $paymentKeysJson = json_encode($paymentKeys);
+    $checkExist = $connection->query("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
+    if (mysqli_num_rows($checkExist) == 0) {
+        $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', ?)");
+        $stmt->bind_param("s", $paymentKeysJson);
+        $stmt->execute();
+        $stmt->close();
+    } else {
+        // به‌روزرسانی رکورد موجود
+        $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'PAYMENT_KEYS'");
+        $stmt->bind_param("s", $paymentKeysJson);
+        $stmt->execute();
+        $stmt->close();
     }
+
 
     // بررسی و به‌روزرسانی UUID‌ برای سفارش‌ها
     $list = $connection->query("SELECT * FROM `orders_list` WHERE `uuid` IS NULL");
