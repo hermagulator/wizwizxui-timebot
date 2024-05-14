@@ -118,20 +118,17 @@ $arrays = [
       );",
     "ALTER TABLE `orders_list` CHANGE `token` `token` VARCHAR(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci NOT NULL;",
     "ALTER TABLE `orders_list` CHANGE `uuid` `uuid` VARCHAR(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci NOT NULL;"
-    ];
-function updateBot() {
-    global $arrays, $connection, $walletwizwiz, $nowPaymentKey, $zarinpalId, $perfectMoneyAccountID, $passPhrase, $payeeAccount;
-
-    // اجرای کوئری‌ها از آرایه‌ی $arrays
-    foreach ($arrays as $query) {
-        try {
+];
+function updateBot(){
+    global $arrays, $connection, $walletwizwiz, $nowPaymentKey, $zarinpalId;
+    
+    foreach($arrays as $query){
+        try{
             $connection->query($query);
-        } catch (Exception $error) {
-            // یک مکانیزم لاگ کردن خطا باید اینجا قرار گیرد
-            error_log($error->getMessage());
+        }catch (exception $error){
+
         }
     }
-
     // به‌روزرسانی اطلاعات کاربران از فایل userInfo.json
     if (file_exists("../userInfo.json")) {
         $usersInfo = json_decode(file_get_contents("../userInfo.json"), true);
