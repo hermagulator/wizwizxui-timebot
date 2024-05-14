@@ -31,7 +31,7 @@ do
 			rm -r /var/www/html/wizwizxui-timebot/
 			echo -e "\n\e[92mWait a few seconds ...\033[0m\n"
 			sleep 3
-			git clone https://github.com/hermagulator/wizwizxui-timebot /var/www/html/wizwizxui-timebot
+			git clone https://github.com/hermagulator/wizwizxui-timebot.git /var/www/html/wizwizxui-timebot
 			sudo chown -R www-data:www-data /var/www/html/wizwizxui-timebot/
 			sudo chmod -R 755 /var/www/html/wizwizxui-timebot/
 			sleep 3
@@ -80,7 +80,7 @@ do
 			rm /var/www/html/wizwizxui-timebot/wizwiz.sh
   			rm /var/www/html/wizwizxui-timebot/tempCookie.txt
   			rm /var/www/html/wizwizxui-timebot/settings/messagewizwiz.json
-
+			clear
 			
 			echo -e "\n\e[92mThe script was successfully updated! \033[0m\n"
 			
@@ -148,7 +148,7 @@ do
 			exit 1
 			else
 
-
+			clear
 
 			echo -e ' '
 			      echo -e "\e[100mwizwiz panel:\033[0m"
@@ -197,7 +197,7 @@ do
 			sudo rm -r /var/www/html/wizpanel${pathsss}
 			sudo rm -r /var/www/html/wizwizxui-timebot
 			
-
+			clear
 			
 			sleep 1
 			
