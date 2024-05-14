@@ -904,6 +904,10 @@ function getGateWaysKeys() {
         ['text' => "کارت به کارت", 'callback_data' => "wizwizch"]
     ];
     $buttons[] = [
+        ['text' => $botState['paywithPerfectmoney'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWayspaywithPerfectmoney"],
+        ['text' => "ووچر پرفکت مانی", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
         ['text' => $botState['nextpay'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaysnextpay"],
         ['text' => "درگاه نکست پی", 'callback_data' => "wizwizch"]
     ];
