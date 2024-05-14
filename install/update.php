@@ -119,107 +119,143 @@ $arrays = [
     "ALTER TABLE `orders_list` CHANGE `token` `token` VARCHAR(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci NOT NULL;",
     "ALTER TABLE `orders_list` CHANGE `uuid` `uuid` VARCHAR(1000) CHARACTER SET utf8mb4 COLLATE utf8mb4_persian_ci NOT NULL;"
     ];
-function updateBot(){
-    global $arrays, $connection, $walletwizwiz, $nowPaymentKey, $zarinpalId;
-    
-    foreach($arrays as $query){
-        try{
-            $connection->query($query);
-        }catch (exception $error){
+function updateBot() {
+    global $arrays, $connection, $walletwizwiz, $nowPaymentKey, $zarinpalId, $perfectMoneyAccountID, $passPhrase, $payeeAccount;
 
+    // اجرای کوئری‌ها از آرایه‌ی $arrays
+    foreach ($arrays as $query) {
+        try {
+            $connection->query($query);
+        } catch (Exception $error) {
+            // یک مکانیزم لاگ کردن خطا باید اینجا قرار گیرد
+            error_log($error->getMessage());
         }
     }
-    
-    if(file_exists("../userInfo.json")){
-        $usersInfo = json_decode(file_get_contents("../userInfo.json"),true);
-        foreach($usersInfo as $user => $value){
-            $query = "UPDATE `users` SET `step` = '" . $value['step'] . "'";
-            if(isset($value['first_start'])) $query .= ", `first_start` = '" . $value['first_start'] . "'";
-            if(isset($value['isAdmin'])) $query .= ", `isAdmin` = '" . $value['isAdmin'] . "'";
-            if(isset($value['freetrial'])) $query .= ", `freetrial` = '" . $value['freetrial'] . "'";
-            $query .= " WHERE `userid` = " . $user;
-            $connection->query($query);
+
+    // به‌روزرسانی اطلاعات کاربران از فایل userInfo.json
+    if (file_exists("../userInfo.json")) {
+        $usersInfo = json_decode(file_get_contents("../userInfo.json"), true);
+        foreach ($usersInfo as $user => $value) {
+            $query = "UPDATE `users` SET `step` = ?, `first_start` = ?, `isAdmin` = ?, `freetrial` = ? WHERE `userid` = ?";
+            $stmt = $connection->prepare($query);
+            $stmt->bind_param("ssssi", $value['step'], $value['first_start'], $value['isAdmin'], $value['freetrial'], $user);
+            $stmt->execute();
+            $stmt->close();
         }
-        
+
+        // به‌روزرسانی تنظیمات ربات از فایل botstate.json
         $newData = file_get_contents("../settings/botstate.json");
         $checkExist = $connection->query("SELECT * FROM `setting` WHERE `type` = 'BOT_STATES'");
-        if(mysqli_num_rows($checkExist) == 0) $connection->query("INSERT INTO `setting` (`type`, `value`) VALUES ('BOT_STATES', '$newData')");
+        if (mysqli_num_rows($checkExist) == 0) {
+            $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('BOT_STATES', ?)");
+            $stmt->bind_param("s", $newData);
+            $stmt->execute();
+            $stmt->close();
+        }
     }
-    if(isset($nowPaymentKey) && isset($zarinpalId)){
+
+    // به‌روزرسانی یا اضافه کردن درگاه‌های پرداخت
+    if (isset($nowPaymentKey) && isset($zarinpalId)) {
         $paymentKeys = array();
         $paymentKeys['bankAccount'] = $walletwizwiz;
         $paymentKeys['holderName'] = "";
         $paymentKeys['nowpayment'] = $nowPaymentKey;
         $paymentKeys['zarinpal'] = $zarinpalId;
         $paymentKeys['nextpay'] = "";
-        
-        $paymentKeys = json_encode($paymentKeys);
+        // اضافه کردن ووچر پرفکت مانی
+        $paymentKeys['PerfectMoneyAccountID'] = $perfectMoneyAccountID ?? "your-account-id";
+        $paymentKeys['PassPhrase'] = $passPhrase ?? "your-passphrase";
+        $paymentKeys['Payee_Account'] = $payeeAccount ?? "your-payee-account";
+
+        $paymentKeysJson = json_encode($paymentKeys);
         $checkExist = $connection->query("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
-        if(mysqli_num_rows($checkExist) == 0) $connection->query("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', '$paymentKeys')");    
-    }
-    $list = $connection->query("SELECT * FROM `orders_list` WHERE `uuid` IS NULL");
-    if(mysqli_num_rows($list) > 0){
-        while($row = $list->fetch_assoc()){
-            $id = $row['id'];
-            $link = json_decode($row['link'],true)[0];
-            if(!empty($link)){
-                if(preg_match('/^vmess:\/\/(.*)/',$link,$match)){
-                    $jsonDecode = json_decode(base64_decode($match[1]),true);
-                    $uuid = $jsonDecode['id'];
-                }elseif(preg_match('/^vless:\/\/(.*?)\@/',$link,$match)){
-                    $uuid = $match[1];
-                }elseif(preg_match('/^trojan:\/\/(.*?)\@/',$link,$match)){
-                    $uuid = $match[1];
-                }
-                if(isset($uuid)) $connection->query("UPDATE `orders_list` SET `uuid` = '$uuid' WHERE `id` = '$id'");
-            }
-        }
-    }
-    
-    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'BOT_STATES'");
-    $stmt->execute();
-    $isExists = $stmt->get_result();
-    $stmt->close();
-    if($isExists->num_rows>0){
-        
-        $botState = $isExists->fetch_assoc()['value'];
-        if(!is_null($botState)) $botState = json_decode($botState,true);
-        else $botState = array();
-        
-        if(!isset($botState['USDRate']) && !isset($botState['TRXRate'])){
-            $query = "UPDATE `setting` SET `value` = ? WHERE `type` = 'BOT_STATES'";
-            
-            $rate = json_decode(file_get_contents("https://api.changeto.technology/api/rate"),true)['result'];
-            if(!empty($rate['USD'])) $botState['USDRate'] = $rate['USD'];
-            if(!empty($rate['TRX'])) $botState['TRXRate'] = $rate['TRX'];
-            
-            $newData = json_encode($botState);
-            
-            $stmt = $connection->prepare($query);
-            $stmt->bind_param("s", $newData);
+        if (mysqli_num_rows($checkExist) == 0) {
+            $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', ?)");
+            $stmt->bind_param("s", $paymentKeysJson);
+            $stmt->execute();
+            $stmt->close();
+        } else {
+            // به‌روزرسانی رکورد موجود
+            $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'PAYMENT_KEYS'");
+            $stmt->bind_param("s", $paymentKeysJson);
             $stmt->execute();
             $stmt->close();
         }
     }
-    else{
-        $query = "INSERT INTO `setting` (`type`, `value`) VALUES ('BOT_STATES', ?)";
 
+    // بررسی و به‌روزرسانی UUID‌ برای سفارش‌ها
+    $list = $connection->query("SELECT * FROM `orders_list` WHERE `uuid` IS NULL");
+    if (mysqli_num_rows($list) > 0) {
+        while ($row = $list->fetch_assoc()) {
+            $id = $row['id'];
+            $link = json_decode($row['link'], true)[0];
+            if (!empty($link)) {
+                if (preg_match('/^vmess:\/\/(.*)/', $link, $match)) {
+                    $jsonDecode = json_decode(base64_decode($match[1]), true);
+                    $uuid = $jsonDecode['id'];
+                } elseif (preg_match('/^vless:\/\/(.*?)\@/', $link, $match)) {
+                    $uuid = $match[1];
+                } elseif (preg_match('/^trojan:\/\/(.*?)\@/', $link, $match)) {
+                    $uuid = $match[1];
+                }
+                if (isset($uuid)) {
+                    $stmt = $connection->prepare("UPDATE `orders_list` SET `uuid` = ? WHERE `id` = ?");
+                    $stmt->bind_param("si", $uuid, $id);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+        }
+    }
+
+    // به‌روزرسانی نرخ USD و TRX در BOT_STATES
+    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'BOT_STATES'");
+    $stmt->execute();
+    $isExists = $stmt->get_result();
+    $stmt->close();
+    if ($isExists->num_rows > 0) {
+        $botState = $isExists->fetch_assoc()['value'];
+        if (!is_null($botState)) $botState = json_decode($botState, true);
+        else $botState = array();
+
+        $needUpdate = false;
+        $rate = json_decode(file_get_contents("https://api.changeto.technology/api/rate"), true)['result'];
+        if (!isset($botState['USDRate']) && !empty($rate['USD'])) {
+            $botState['USDRate'] = $rate['USD'];
+            $needUpdate = true;
+        }
+        if (!isset($botState['TRXRate']) && !empty($rate['TRX'])) {
+            $botState['TRXRate'] = $rate['TRX'];
+            $needUpdate = true;
+        }
+
+        if ($needUpdate) {
+            $newData = json_encode($botState);
+            $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'BOT_STATES'");
+            $stmt->bind_param("s", $newData);
+            $stmt->execute();
+            $stmt->close();
+        }
+    } else {
+        $query = "INSERT INTO `setting` (`type`, `value`) VALUES ('BOT_STATES', ?)";
         $botState = array();
-        
-        $rate = json_decode(file_get_contents("https://api.changeto.technology/api/rate"),true)['result'];
-        if(!empty($rate['USD'])) $botState['USDRate'] = $rate['USD'];
-        if(!empty($rate['TRX'])) $botState['TRXRate'] = $rate['TRX'];
-        
+
+        $rate = json_decode(file_get_contents("https://api.changeto.technology/api/rate"), true)['result'];
+        if (!empty($rate['USD'])) $botState['USDRate'] = $rate['USD'];
+        if (!empty($rate['TRX'])) $botState['TRXRate'] = $rate['TRX'];
+
         $newData = json_encode($botState);
-        
+
         $stmt = $connection->prepare($query);
         $stmt->bind_param("s", $newData);
         $stmt->execute();
         $stmt->close();
     }
-    
-    
-    if(file_exists(getcwd() . '/tempCookie.txt')) unlink('../tempCookie.txt');
-    if(file_exists(getcwd() . '/settings/messagewizwiz.json')) unlink('../settings/messagewizwiz.json');
+    // پاک‌سازی فایل‌های موقت
+    if (file_exists(getcwd() . '/tempCookie.txt')) {
+        unlink(getcwd() . '/tempCookie.txt');
+    }
+    if (file_exists(getcwd() . '/settings/messagewizwiz.json')) {
+        unlink(getcwd() . '/settings/messagewizwiz.json');
+    }
 }
-?>

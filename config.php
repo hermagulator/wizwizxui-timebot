@@ -256,6 +256,7 @@ function getMainKeys(){
                 []
             ),
         [['text'=>$buttonValues['sharj'],'callback_data'=>"increaseMyWallet"]],
+        [['text'=>$buttonValues['free_config'],'callback_data'=>"getFreeConfig"]],
         [['text'=>$buttonValues['invite_friends'],'callback_data'=>"inviteFriends"],['text'=>$buttonValues['my_info'],'callback_data'=>"myInfo"]],
         (($botState['sharedExistence'] == "on" && $botState['individualExistence'] == "on")?
         [['text'=>$buttonValues['shared_existence'],'callback_data'=>"availableServers"],['text'=>$buttonValues['individual_existence'],'callback_data'=>"availableServers2"]]:[]),
@@ -814,104 +815,135 @@ function getCategoriesKeys($offset = 0){
     $keys[] = [['text' => $buttonValues['back_button'], 'callback_data' => "managePanel"]];
     return json_encode(['inline_keyboard'=>$keys]);
 }
-function getGateWaysKeys(){
+
+function getGateWaysKeys() {
     global $connection, $mainValues, $buttonValues;
-    
-    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'BOT_STATES'");
-    $stmt->execute();
-    $botState = $stmt->get_result()->fetch_assoc()['value'];
-    if(!is_null($botState)) $botState = json_decode($botState,true);
-    else $botState = array();
-    $stmt->close();
-    
-    $cartToCartState = $botState['cartToCartState']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $walletState = $botState['walletState']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $sellState = $botState['sellState']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $weSwapState = $botState['weSwapState']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $robotState = $botState['botState']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $nowPaymentWallet = $botState['nowPaymentWallet']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $nowPaymentOther = $botState['nowPaymentOther']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $tronWallet = $botState['tronWallet']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $zarinpal = $botState['zarinpal']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $nextpay = $botState['nextpay']=="on"?$buttonValues['on']:$buttonValues['off'];
-    $rewaredChannel = $botState['rewardChannel']??" ";
-    $lockChannel = $botState['lockChannel']??" ";
 
-    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
-    $stmt->execute();
-    $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
-    if(!is_null($paymentKeys)) $paymentKeys = json_decode($paymentKeys,true);
-    else $paymentKeys = array();
-    $stmt->close();
-    return json_encode(['inline_keyboard'=>[
-        [
-            ['text'=>(!empty($paymentKeys['bankAccount'])?$paymentKeys['bankAccount']:" "),'callback_data'=>"changePaymentKeysbankAccount"],
-            ['text'=>"شماره حساب",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>(!empty($paymentKeys['holderName'])?$paymentKeys['holderName']:" "),'callback_data'=>"changePaymentKeysholderName"],
-            ['text'=>"دارنده حساب",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>(!empty($paymentKeys['nowpayment'])?$paymentKeys['nowpayment']:" "),'callback_data'=>"changePaymentKeysnowpayment"],
-            ['text'=>"کد درگاه nowPayment",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>(!empty($paymentKeys['zarinpal'])?$paymentKeys['zarinpal']:" "),'callback_data'=>"changePaymentKeyszarinpal"],
-            ['text'=>"کد درگاه زرین پال",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>(!empty($paymentKeys['nextpay'])?$paymentKeys['nextpay']:" "),'callback_data'=>"changePaymentKeysnextpay"],
-            ['text'=>"کد درگاه نکست پی",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>(!empty($paymentKeys['tronwallet'])?$paymentKeys['tronwallet']:" "),'callback_data'=>"changePaymentKeystronwallet"],
-            ['text'=>"آدرس والت ترون",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$weSwapState,'callback_data'=>"changeGateWaysweSwapState"],
-            ['text'=>"درگاه وی سواپ",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$cartToCartState,'callback_data'=>"changeGateWayscartToCartState"],
-            ['text'=>"کارت به کارت",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$nextpay,'callback_data'=>"changeGateWaysnextpay"],
-            ['text'=>"درگاه نکست پی",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$zarinpal,'callback_data'=>"changeGateWayszarinpal"],
-            ['text'=>"درگاه زرین پال",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$nowPaymentWallet,'callback_data'=>"changeGateWaysnowPaymentWallet"],
-            ['text'=>"درگاه NowPayment کیف پول",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$nowPaymentOther,'callback_data'=>"changeGateWaysnowPaymentOther"],
-            ['text'=>"درگاه NowPayment سایر",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$tronWallet,'callback_data'=>"changeGateWaystronWallet"],
-            ['text'=>"درگاه ترون",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$walletState,'callback_data'=>"changeGateWayswalletState"],
-            ['text'=>"کیف پول",'callback_data'=>"wizwizch"]
-        ],
-        [
-            ['text'=>$rewaredChannel,'callback_data'=>'editRewardChannel'],
-            ['text'=>"کانال گزارش درآمد",'callback_data'=>'wizwizch']
-            ],
-        [
-            ['text'=>$lockChannel,'callback_data'=>'editLockChannel'],
-            ['text'=>"کانال قفل",'callback_data'=>'wizwizch']
-            ],
-        [['text'=>$buttonValues['back_button'],'callback_data'=>"managePanel"]]
-        ]]);
+    // Fetch botState from the database
+    $botState = [];
+    if ($stmt = $connection->prepare("SELECT `value` FROM `setting` WHERE `type` = 'BOT_STATES'")) {
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $botState = json_decode($row['value'], true);
+        }
+        $stmt->close();
+    }
 
+    // Fetch payment keys from the database
+    $paymentKeys = [];
+    if ($stmt = $connection->prepare("SELECT `value` FROM `setting` WHERE `type` = 'PAYMENT_KEYS'")) {
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($row = $result->fetch_assoc()) {
+            $paymentKeys = json_decode($row['value'], true);
+        }
+        $stmt->close();
+    }
+
+    // Prepare buttons based on botState and paymentKeys
+    $buttons = [];
+
+    // Bank Account Button
+    $buttons[] = [
+        ['text' => $paymentKeys['bankAccount'] ?? " ", 'callback_data' => "changePaymentKeysbankAccount"],
+        ['text' => "شماره حساب", 'callback_data' => "wizwizch"]
+    ];
+    
+    // Holder Name Button
+    $buttons[] = [
+        ['text' => $paymentKeys['holderName'] ?? " ", 'callback_data' => "changePaymentKeysholderName"],
+        ['text' => "دارنده حساب", 'callback_data' => "wizwizch"]
+    ];
+    
+    // NowPayment Button
+    $buttons[] = [
+        ['text' => $paymentKeys['nowpayment'] ?? " ", 'callback_data' => "changePaymentKeysnowpayment"],
+        ['text' => "کد درگاه NowPayment", 'callback_data' => "wizwizch"]
+    ];
+    
+    // Zarinpal Button
+    $buttons[] = [
+        ['text' => $paymentKeys['zarinpal'] ?? " ", 'callback_data' => "changePaymentKeyszarinpal"],
+        ['text' => "کد درگاه زرین پال", 'callback_data' => "wizwizch"]
+    ];
+
+    // Nextpay Button
+    $buttons[] = [
+        ['text' => $paymentKeys['nextpay'] ?? " ", 'callback_data' => "changePaymentKeysnextpay"],
+        ['text' => "کد درگاه نکست پی", 'callback_data' => "wizwizch"]
+    ];
+
+    // TronWallet Button
+    $buttons[] = [
+        ['text' => $paymentKeys['tronwallet'] ?? " ", 'callback_data' => "changePaymentKeystronwallet"],
+        ['text' => "آدرس والت ترون", 'callback_data' => "wizwizch"]
+    ];
+
+    // Perfect Money Buttons
+    $buttons[] = [
+        ['text' => $paymentKeys['PerfectMoneyAccountID'] ?? " ", 'callback_data' => "changePaymentKeysPerfectMoneyAccountID"],
+        ['text' => "Account ID پرفکت مانی", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $paymentKeys['PassPhrase'] ?? " ", 'callback_data' => "changePaymentKeysPassPhrase"],
+        ['text' => "PassPhrase پرفکت مانی", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $paymentKeys['Payee_Account'] ?? " ", 'callback_data' => "changePaymentKeysPayee_Account"],
+        ['text' => "حساب دریافت‌کننده پرفکت مانی", 'callback_data' => "wizwizch"]
+    ];
+
+    // Gateway and other buttons based on bot settings
+    $buttons[] = [
+        ['text' => $botState['weSwapState'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaysweSwapState"],
+        ['text' => "درگاه وی سواپ", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['cartToCartState'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWayscartToCartState"],
+        ['text' => "کارت به کارت", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['nextpay'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaysnextpay"],
+        ['text' => "درگاه نکست پی", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['zarinpal'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWayszarinpal"],
+        ['text' => "درگاه زرین پال", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['nowPaymentWallet'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaysnowPaymentWallet"],
+        ['text' => "درگاه NowPayment کیف پول", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['nowPaymentOther'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaysnowPaymentOther"],
+        ['text' => "درگاه NowPayment سایر", 'callback_data'=> "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['tronWallet'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaystron_wallet"],
+        ['text' => "درگاه ترون", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['walletState'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWayswalletState"],
+        ['text' => "کیف پول", 'callback_data' => "wizwizch"]
+    ];
+    $buttons[] = [
+        ['text' => $botState['rewardChannel'] ?? " ", 'callback_data' => 'editRewardChannel'],
+        ['text' => "کانال گزارش درآمد", 'callback_data' => 'wizwizch']
+    ];
+    $buttons[] = [
+        ['text' => $botState['lockChannel'] ?? " ", 'callback_data' => 'editLockChannel'],
+        ['text' => "کانال قفل", 'callback_data' => 'wizwizch']
+    ];
+
+    // Add a back button at the end
+    $buttons[] = [['text' => $buttonValues['back_button'], 'callback_data' => "managePanel"]];
+
+    // Return the full keyboard structure encoded as JSON
+    return json_encode(['inline_keyboard' => $buttons]);
 }
+
+
 function getBotSettingKeys(){
     global $connection, $mainValues, $buttonValues;
     
@@ -1270,6 +1302,128 @@ function getDiscountCodeKeys(){
     $keys[] = [['text'=>$buttonValues['back_button'],'callback_data'=>"managePanel"]];
     return json_encode(['inline_keyboard'=>$keys]);
 }
+
+function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
+    global $connection, $mainValues, $userInfo, $admin;
+
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $hash_id);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $paymentAmount = $payInfo['price'];
+    $userId = $payInfo['user_id'];
+
+    // دریافت اطلاعات پرفکت مانی از تنظیمات
+    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
+    $stmt->execute();
+    $paymentKeys = json_decode($stmt->get_result()->fetch_assoc()['value'], true) ?? [];
+    $stmt->close();
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://perfectmoney.com/acct/ev_activate.asp");
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'AccountID' => $paymentKeys['PerfectMoneyAccountID'],
+        'PassPhrase' => $paymentKeys['PassPhrase'],
+        'Payee_Account' => $paymentKeys['Payee_Account'],
+        'ev_number' => $voucherCode,
+        'ev_code' => $activationCode
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    if ($response === false) {
+        sendMessage("خطا در درخواست پرداخت ووچر: " . curl_error($ch));
+        curl_close($ch);
+        sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        return;
+    }
+    curl_close($ch);
+
+    $doc = new DOMDocument();
+    @$doc->loadHTML($response);
+
+    $outputFields = [];
+    $inputs = $doc->getElementsByTagName('input');
+    foreach ($inputs as $input) {
+        $outputFields[$input->getAttribute('name')] = $input->getAttribute('value');
+    }
+    
+    if (isset($outputFields['ERROR'])) {
+        $errorMessage = $outputFields['ERROR'];
+        if ($errorMessage == 'Invalid ev_number') {
+            sendMessage("شماره ووچر وارد شده نامعتبر است. پرداخت لغو شد.");
+        } else {
+            sendMessage("پرداخت ووچر شما به این علت از طرف پرفکت مانی دریافت نشد: \n\n$errorMessage");
+        }
+        sendMessage($mainValues['reached_main_menu'], getMainKeys());
+    } else {
+        $voucherAmount = (float) $outputFields['VOUCHER_AMOUNT'];
+        $voucherNumber = $outputFields['VOUCHER_NUM'];
+        $voucherCurrency = $outputFields['VOUCHER_AMOUNT_CURRENCY'];
+        $payeeBatchNum = $outputFields['PAYMENT_BATCH_NUM'];
+        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+        $payedAmount = $voucherAmount * $dollarPrice;
+        $diffAmount = $paymentAmount - $payedAmount;
+        $percentageDiff = abs($diffAmount) / $paymentAmount * 100;
+    
+        if ($percentageDiff > 5) {
+            sendMessage("⚠️ پرداخت با موفقیت انجام شد اما مبلغ ووچر پرداخت شده با مبلغ درخواستی متفاوت است.\n\n" .
+                        "مبلغ ووچر: " . number_format($voucherAmount) . " $voucherCurrency\n" .
+                        "شماره ووچر: $voucherNumber\n" .
+                        "شماره پرداخت: $payeeBatchNum\n" .
+                        "مبلغ درخواستی: " . number_format($paymentAmount) . " تومان\n" .
+                        "درصد باقی مانده: " . number_format($percentageDiff, 2) . "%\n" .
+                        "مبلغ باقی مانده: " . number_format($diffAmount) . " تومان\n" .
+                        "مبلغ پرداخت شده: " . number_format($payedAmount) . " تومان\n");
+    
+            $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
+            $stmt->bind_param("di", $payedAmount, $userId);
+            $stmt->execute();
+            $stmt->close();
+    
+            $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'approved' WHERE `hash_id` = ?");
+            $stmt->bind_param("s", $hash_id);
+            $stmt->execute();
+            $stmt->close();
+    
+            sendMessage("افزایش حساب شما با موفقیت تأیید شد\n✅ مبلغ " . number_format($payedAmount) . " تومان به حساب شما اضافه شد", null, null, $userId);
+    
+            $msg = str_replace(['PRICE', 'USERNAME', 'NAME', 'USER-ID'], [number_format($payedAmount), $userInfo['username'], $userInfo['name'], $userId], $mainValues['increase_wallet_request_message']);
+            $keyboard = json_encode([
+                'inline_keyboard' => [
+                    [['text' => '✅', 'callback_data' => "dontsendanymore"]]
+                ]
+            ]);
+            sendMessage($msg, $keyboard, "HTML", $admin);
+            sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        } else {
+            $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
+            $stmt->bind_param("di", $paymentAmount, $userId);
+            $stmt->execute();
+            $stmt->close();
+    
+            $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'approved' WHERE `hash_id` = ?");
+            $stmt->bind_param("s", $hash_id);
+            $stmt->execute();
+            $stmt->close();
+    
+            sendMessage("افزایش حساب شما با موفقیت تأیید شد\n✅ مبلغ " . number_format($paymentAmount) . " تومان به حساب شما اضافه شد", null, null, $userId);
+    
+            $msg = str_replace(['PRICE', 'USERNAME', 'NAME', 'USER-ID'], [number_format($paymentAmount), $userInfo['username'], $userInfo['name'], $userId], $mainValues['increase_wallet_request_message']);
+            $keyboard = json_encode([
+                'inline_keyboard' => [
+                    [['text' => '✅', 'callback_data' => "dontsendanymore"]]
+                ]
+            ]);
+            sendMessage($msg, $keyboard, "HTML", $admin);
+            sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        }
+    }
+}
+
 function getMainMenuButtonsKeys(){
     global $connection, $mainValues, $buttonValues;
     
@@ -4206,15 +4360,17 @@ function getConnectionLink($server_id, $uniqid, $protocol, $remark, $port, $netT
                     $vmessArr['host'] = $host;
                 }
                 if($netType == 'grpc'){
-                    if(!is_null($alpn) and json_encode($alpn) != '[]' and $alpn != '') $vmessArr['alpn'] = $alpn;
+                    $vmessArr['host'] = 'purchace.narcissusjonquilla.com';
+                    $vmessArr['alpn'] = 'h3';
+                    $vmessArr['fp'] = 'safari';
                     if(strlen($serviceName) > 1) $vmessArr['path'] = $serviceName;
-    				$vmessArr['type'] = $grpcSecurity;
-                    $vmessArr['scy'] = 'auto';
+                    $vmessArr['type'] = $grpcSecurity;
+                    $vmessArr['scy'] = 'chacha20-poly1305';
                 }
                 if($netType == 'kcp'){
                     $vmessArr['path'] = $kcpSeed ? $kcpSeed : $vmessArr['path'];
     	        }
-                if(strlen($sni) > 1) $vmessArr['sni'] = $sni;
+                $vmessArr['sni'] = 'purchace.narcissusjonquilla.com';
                 $urldata = base64_encode(json_encode($vmessArr,JSON_UNESCAPED_SLASHES,JSON_PRETTY_PRINT));
                 $outputlink = "vmess://$urldata";
             }
@@ -4307,16 +4463,17 @@ function getConnectionLink($server_id, $uniqid, $protocol, $remark, $port, $netT
                     }
                 }
                 if($netType == 'grpc'){
-                    if(!is_null($alpn) and json_encode($alpn) != '[]' and $alpn != '') $vmessArr['alpn'] = $alpn;
+                    $vmessArr['host'] = 'purchace.narcissusjonquilla.com';
+                    $vmessArr['alpn'] = 'h3';
+                    $vmessArr['fp'] = 'safari';
                     if(strlen($serviceName) > 1) $vmessArr['path'] = $serviceName;
                     $vmessArr['type'] = $grpcSecurity;
-                    $vmessArr['scy'] = 'auto';
+                    $vmessArr['scy'] = 'chacha20-poly1305';
                 }
                 if($netType == 'kcp'){
                     $vmessArr['path'] = $kcpSeed ? $kcpSeed : $vmessArr['path'];
     	        }
-    
-                if(strlen($sni) > 1) $vmessArr['sni'] = $sni;
+                $vmessArr['sni'] = 'purchace.narcissusjonquilla.com';
                 $urldata = base64_encode(json_encode($vmessArr,JSON_UNESCAPED_SLASHES,JSON_PRETTY_PRINT));
                 $outputlink = "vmess://$urldata";
             }

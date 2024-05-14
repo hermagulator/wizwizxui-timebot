@@ -212,9 +212,9 @@ if($data=="changeConfigRemarkType"){
     setSettings('remark', $newValue);
     editText($message_id,$mainValues['change_bot_settings_message'],getBotSettingKeys());
 }
-if(preg_match('/^changePaymentKeys(\w+)/',$data,$match) && ($from_id == $admin || $userInfo['isAdmin'] == true)){
+if (preg_match('/^changePaymentKeys(\w+)/', $data, $match) && ($from_id == $admin || $userInfo['isAdmin'] == true)) {
     delMessage();
-    switch($match[1]){
+    switch ($match[1]) {
         case "nextpay":
             $gate = "کد جدید درگاه نکست پی";
             break;
@@ -233,31 +233,43 @@ if(preg_match('/^changePaymentKeys(\w+)/',$data,$match) && ($from_id == $admin |
         case "tronwallet":
             $gate = "آدرس والت ترون";
             break;
+        case "PerfectMoneyAccountID":
+            $gate = "Account ID پرفکت مانی";
+            break;
+        case "PassPhrase":
+            $gate = "PassPhrase پرفکت مانی";
+            break;
+        case "Payee_Account":
+            $gate = "حساب دریافت‌کننده پرفکت مانی";
+            break;
     }
     sendMessage("🔘|لطفا $gate را وارد کنید", $cancelKey);
     setUser($data);
 }
-if(preg_match('/^changePaymentKeys(\w+)/',$userInfo['step'],$match) && $text != $buttonValues['cancel'] && ($from_id == $admin || $userInfo['isAdmin'] == true)){
 
+if (preg_match('/^changePaymentKeys(\w+)/', $userInfo['step'], $match) && $text != $buttonValues['cancel'] && ($from_id == $admin || $userInfo['isAdmin'] == true)) {
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
     $stmt->execute();
     $paymentInfo = $stmt->get_result();
     $stmt->close();
-    $paymentKeys = json_decode($paymentInfo->fetch_assoc()['value'],true)??array();
+    $paymentKeys = json_decode($paymentInfo->fetch_assoc()['value'], true) ?? array();
     $paymentKeys[$match[1]] = $text;
     $paymentKeys = json_encode($paymentKeys);
-    
-    if($paymentInfo->num_rows > 0) $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'PAYMENT_KEYS'");
-    else $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', ?)");
-    $stmt->bind_param("s", $paymentKeys);
-    $stmt->execute(); 
-    $stmt->close();
-    
 
-    sendMessage($mainValues['saved_successfuly'],$removeKeyboard);
-    sendMessage($mainValues['change_bot_settings_message'],getGateWaysKeys());
+    if ($paymentInfo->num_rows > 0) {
+        $stmt = $connection->prepare("UPDATE `setting` SET `value` = ? WHERE `type` = 'PAYMENT_KEYS'");
+    } else {
+        $stmt = $connection->prepare("INSERT INTO `setting` (`type`, `value`) VALUES ('PAYMENT_KEYS', ?)");
+    }
+    $stmt->bind_param("s", $paymentKeys);
+    $stmt->execute();
+    $stmt->close();
+
+    sendMessage($mainValues['saved_successfuly'], $removeKeyboard);
+    sendMessage($mainValues['change_bot_settings_message'], getGateWaysKeys());
     setUser();
 }
+
 if(($data == "agentsList" || preg_match('/^nextAgentList(\d+)/',$data,$match)) && ($from_id == $admin || $userInfo['isAdmin'] == true)){
     $keys = getAgentsList($match[1]??0);
     if($keys != null) editText($message_id,$mainValues['agents_list'], $keys);
@@ -761,6 +773,7 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     
     $keyboard = array();
     if($botState['cartToCartState'] == "on") $keyboard[] = [['text' => $buttonValues['cart_to_cart'],  'callback_data' => "increaseWalletWithCartToCart" . $hash_id]];
+    $keyboard[] = [['text' => $buttonValues['perfectmoney'],  'callback_data' => "increaseWalletWithPerfectmoney" . $hash_id]];
     if($botState['nowPaymentWallet'] == "on") $keyboard[] = [['text' => $buttonValues['now_payment_gateway'],  'url' => $botUrl . "pay/?nowpayment&hash_id=" . $hash_id]];
     if($botState['zarinpal'] == "on") $keyboard[] = [['text' => $buttonValues['zarinpal_gateway'],  'url' => $botUrl . "pay/?zarinpal&hash_id=" . $hash_id]];
     if($botState['nextpay'] == "on") $keyboard[] = [['text' => $buttonValues['nextpay_gateway'],  'url' => $botUrl . "pay/?nextpay&hash_id=" . $hash_id]];
@@ -774,6 +787,62 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     sendMessage("اطلاعات شارژ:\nمبلغ ". number_format($text) . " تومان\n\nلطفا روش پرداخت را انتخاب کنید",$keys);
     setUser();
 }
+
+
+if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
+    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
+    $stmt->execute();
+    $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
+    $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
+    $stmt->close();
+
+    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $hash_id);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $paymentAmount = $payInfo['price'];
+    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+    $amountInUSD = $paymentAmount / $dollarPrice;
+
+    delMessage();
+    setUser("perfectmoneyVoucherCode" . $hash_id);
+
+    sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
+                "معادل دلاری: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+    exit;
+}
+
+if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+    if (!empty($text)) {
+        $voucherCode = $text;
+
+        $hash_id = $match[1];
+        setUser("perfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
+
+        sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        sendMessage($mainValues['please_send_only_text']);
+    }
+}
+
+if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+    if (!empty($text)) {
+        $activationCode = $text;
+        $hash_id = $match[1];
+        $voucherCode = $match[2];
+
+        handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode);
+    } else {
+        sendMessage($mainValues['please_send_only_text']);
+    }
+}
+
+
 if(preg_match('/increaseWalletWithCartToCart/',$data)) {
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
     $stmt->execute();
@@ -10062,9 +10131,6 @@ if($data == "managePanel" and (($from_id == $admin || $userInfo['isAdmin'] == tr
     setUser();
     $msg = "
 👤 عزیزم به بخش مدیریت خوشومدی 
-🤌 هرچی نیاز داشتی میتونی اینجا طبق نیازهات اضافه و تغییر بدی ، عزیزم $first_name جان اگه از فروش ربات درآمد داری از من حمایت کن تا پروژه همیشه آپدیت بمونه !
-
-🆔 @wizwizch
 
 🚪 /start
 ";
@@ -10073,31 +10139,238 @@ if($data == "managePanel" and (($from_id == $admin || $userInfo['isAdmin'] == tr
 if($data == 'reciveApplications') {
     $stmt = $connection->prepare("SELECT * FROM `needed_sofwares` WHERE `status`=1");
     $stmt->execute();
-    $respd= $stmt->get_result();
+    $respd = $stmt->get_result();
     $stmt->close();
 
-    $keyboard = []; 
-    while($file =  $respd->fetch_assoc()){ 
+    $keyboard = [
+        ['text' => '📡آموزش اتصال', 'callback_data' => 'connectionTutorial'],
+        ['text' => '💸آموزش خرید', 'callback_data' => 'purchaseTutorial']
+    ];
+
+    while($file = $respd->fetch_assoc()) {
         $link = $file['link'];
         $title = $file['title'];
         $keyboard[] = ['text' => "$title", 'url' => $link];
     }
-    $keyboard[] = ['text'=>$buttonValues['back_to_main'],'callback_data'=>"mainMenu"];
-    $keyboard = array_chunk($keyboard,1); 
-    editText($message_id, "
-🔸می توانید به راحتی همه فایل ها را (به صورت رایگان) دریافت کنید
-📌 شما میتوانید برای راهنمای اتصال به سرویس کانال رسمی مارا دنبال کنید و همچنین از دکمه های زیر میتوانید برنامه های مورد نیاز هر سیستم عامل را دانلود کنید
-
-✅ پیشنهاد ما برنامه V2rayng است زیرا کار با آن ساده است و برای تمام سیستم عامل ها قابل اجرا است، میتوانید به بخش سیستم عامل مورد نظر مراجعه کنید و لینک دانلود را دریافت کنید
-", json_encode(['inline_keyboard'=>$keyboard]));
+    
+    $keyboard[] = ['text' => $buttonValues['back_to_main'], 'callback_data' => "mainMenu"];
+    $keyboard = array_chunk($keyboard, 1);
+    
+    editText($message_id, "⬇️لطفا یک گزینه رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
 }
+
+if($data == 'connectionTutorial') {
+    $keyboard = [
+        ['text' => '📱آموزش فعال‌سازی IPv6 در اندروید', 'callback_data' => 'ipv6AndroidTutorial'],
+        ['text' => '📲آموزش فعال‌سازی IPv6 در آیفون', 'callback_data' => 'ipv6iPhoneTutorial'],
+        ['text' => '⚡️آموزش اتصال در اندروید', 'callback_data' => 'andriodconnectionTutorial'],
+        ['text' => 'آمورش اتصال در IOS 🍏', 'callback_data' => 'iosconnectionTutorial'],
+        ['text' => '💻آموزش اتصال در ویندوز', 'callback_data' => 'laptopconnectionTutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "reciveApplications"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "🐍مرکز آموزش", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'ipv6AndroidTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 14);
+}
+
+if($data == 'ipv6iPhoneTutorial') {
+    $keyboard = [
+        ['text' => '💛ایرانسل', 'callback_data' => 'irancel_ipv6_tutorial'],
+        ['text' => '💙همراه اول', 'callback_data' => 'mci_ipv6_tutorial'],
+        ['text' => '💜رایتل', 'callback_data' => 'rightel_ipv6_tutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "connectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "لطفا اپراتور خود را انتخاب کنید:", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'irancel_ipv6_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 10);
+    forwardMessage($chat_id, '-1002042383972', 11);
+}
+
+if($data == 'mci_ipv6_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 10);
+    forwardMessage($chat_id, '-1002042383972', 12);
+}
+
+if($data == 'rightel_ipv6_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 10);
+    forwardMessage($chat_id, '-1002042383972', 13);
+}
+
+if($data == 'andriodconnectionTutorial') {
+    $keyboard = [
+        ['text' => '🌟V2RayNG🌟', 'callback_data' => 'v2rayng_tutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "connectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "🔉یکی از اپلیکیشن ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'v2rayng_tutorial') {
+    $keyboard = [
+        ['text' => '🍉 دانلود برنامه با لینک مستقیم', 'url'=>"https://github.com/2dust/v2rayNG/releases/download/1.8.21/v2rayNG_1.8.21.apk"], 
+        ['text' => '🪵 دانلود برنامه از گوگل پلی', 'callback_data' => "v2rayngdownload_tutorial"],
+        ['text' => '🍓 آموزش برنامه', 'callback_data' => "v2rayngamouzeh_tutorial"],     
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "andriodconnectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "⏬یکی از گزینه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+
+}
+
+if ($data == 'v2rayngdownload_tutorial') {
+    alert("♻️در حال دریافت لینک آخرین آپدیت");
+    $downloadLink = "https://play.google.com/store/apps/details?id=com.v2ray.ang&hl=en&gl=US&pli=1";
+    sendMessage("لینک دانلود آخرین آپدیت برنامه  👇🏻" . $downloadLink);
+    // Assuming sendMessage function sends the message and $callback_data is defined
+    $callback_data = 'nekoray_tutorial';
+}
+
+
+if($data == 'v2rayngamouzeh_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 22);
+}
+
+if($data == 'iosconnectionTutorial') {
+    $keyboard = [
+        ['text' => '🌟V2box🌟', 'callback_data' => 'V2box_tutorial'],
+        ['text' => 'Npv Tunnel', 'callback_data' => 'Npvios_tutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "connectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "⏬یکی از گزینه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'V2box_tutorial') {
+    $keyboard = [
+        ['text' => '🍉 دانلود برنامه', 'callback_data' => "V2boxdownload_tutorial"], 
+        ['text' => '🍓 آموزش برنامه', 'callback_data' => "V2boxamouzeh_tutorial"],     
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "iosconnectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "⏬یکی از گزینه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+
+}
+
+if($data == 'Npvios_tutorial') {
+    $keyboard = [
+        ['text' => '🍉 دانلود برنامه', 'callback_data' => "Npviosdownload_tutorial"], 
+        ['text' => '🍓 آموزش برنامه', 'callback_data' => "Npviosamouzeh_tutorial"],     
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "iosconnectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "⏬یکی از گزینه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+
+}
+
+if ($data == 'Npviosdownload_tutorial') {
+    alert("♻️در حال دریافت لینک آخرین آپدیت");
+    $downloadLink = "https://apps.apple.com/us/app/npv-tunnel/id1629465476";
+    sendMessage("لینک دانلود آخرین آپدیت برنامه npv tunnle 👇🏻" . $downloadLink);
+    // Assuming sendMessage function sends the message and $callback_data is defined
+    $callback_data = 'Npvios_tutorial';
+}
+
+if ($data == 'V2boxdownload_tutorial') {
+    alert("♻️در حال دریافت لینک آخرین آپدیت");
+    $downloadLink = "https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690";
+    sendMessage("لینک دانلود آخرین آپدیت برنامه v2box 👇🏻" . $downloadLink);
+    // Assuming sendMessage function sends the message and $callback_data is defined
+    $callback_data = 'V2box_tutorial';
+}
+
+
+if($data == 'V2boxamouzeh_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 19);
+}
+
+if($data == 'Npviosamouzeh_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 21);
+}
+
+if($data == 'laptopconnectionTutorial') {
+    $keyboard = [
+        ['text' => '🌟Nekoray🌟', 'callback_data' => 'nekoray_tutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "connectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "🔉یکی از برنامه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'nekoray_tutorial') {
+
+    
+    $keyboard = [
+        ['text' => '🍉 دانلود برنامه', 'callback_data' => "nekoraydownload_tutorial"], 
+        ['text' => '🍓 آموزش برنامه', 'callback_data' => "nekorayamouzeh_tutorial"],     
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "laptopconnectionTutorial"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "⏬یکی از گزینه ها رو انتخاب کن", json_encode(['inline_keyboard' => $keyboard]));
+
+}
+
+if ($data == 'nekoraydownload_tutorial') {
+    alert("♻️در حال دریافت لینک آخرین آپدیت");
+    $downloadLink = "https://github.com/MatsuriDayo/nekoray/releases/download/3.26/nekoray-3.26-2023-12-09-windows64.zip";
+    sendMessage("(nekoray)لینک دانلود آخرین آپدیت برنامه نکوری 👇🏻" . $downloadLink);
+    // Assuming sendMessage function sends the message and $callback_data is defined
+    $callback_data = 'nekoray_tutorial';
+}
+
+if($data == 'nekorayamouzeh_tutorial') {
+    forwardMessage($chat_id, '-1002042383972', 17);
+}
+
+if($data == 'purchaseTutorial') {
+    $keyboard = [
+        ['text' => '🚀 آموزش خرید با ووچر پرفکت مانی', 'callback_data' => 'perfectMoneyTutorial'],
+        ['text' => ' آموزش خرید با گیفت کارت', 'callback_data' => 'giftcardTutorial'],
+        ['text' => '💞 آموزش خرید با ترون', 'callback_data' => 'tronTutorial'],
+        ['text' => '🥇آموزش خرید رمز ارز ', 'callback_data' => 'cryptoTutorial'],
+        ['text' => '👁آموزش خرید به صورت ریالی ', 'callback_data' => 'rialTutorial'],
+        ['text' => '🔙بازگشت به منوی قبلی', 'callback_data' => "reciveApplications"]
+    ];
+    $keyboard = array_chunk($keyboard, 1);
+    editText($message_id, "لطفاً آموزش خرید مورد نظر خود را انتخاب کنید🧠", json_encode(['inline_keyboard' => $keyboard]));
+}
+
+if($data == 'perfectMoneyTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 5); // فروارد پیام آموزشی از کانال دیگر
+}
+
+if($data == 'giftcardTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 6); // فروارد پیام آموزشی از کانال دیگر
+}
+
+if($data == 'tronTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 7); // فروارد پیام آموزشی از کانال دیگر
+}
+
+if($data == 'cryptoTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 8); // فروارد پیام آموزشی از کانال دیگر
+}
+
+if($data == 'rialTutorial') {
+    forwardMessage($chat_id, '-1002042383972', 9); // فروارد پیام آموزشی از کانال دیگر
+}
+
+if($data == 'getFreeConfig') {
+    forwardMessage($chat_id, '-1002071635772', 2); // فروارد پیام آموزشی از کانال دیگر
+}
+
+
 if ($text == $buttonValues['cancel']) {
     setUser();
     $stmt = $connection->prepare("DELETE FROM `server_plans` WHERE `active`=0");
     $stmt->execute();
     $stmt->close();
-
     sendMessage($mainValues['waiting_message'], $removeKeyboard);
-    sendMessage($mainValues['reached_main_menu'],getMainKeys());
+    sendMessage($mainValues['reached_main_menu'], getMainKeys());
 }
 ?>
