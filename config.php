@@ -1340,7 +1340,7 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
         sendMessage("خطا در درخواست پرداخت ووچر: " . curl_error($ch));
         curl_close($ch);
         sendMessage($mainValues['reached_main_menu'], getMainKeys());
-        return;
+        setUser();
     }
     curl_close($ch);
 
@@ -1361,6 +1361,7 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
             sendMessage("پرداخت ووچر شما به این علت از طرف پرفکت مانی دریافت نشد: \n\n$errorMessage");
         }
         sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        setUser();
     } else {
         $voucherAmount = (float) $outputFields['VOUCHER_AMOUNT'];
         $voucherNumber = $outputFields['VOUCHER_NUM'];
