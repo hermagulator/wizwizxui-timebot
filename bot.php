@@ -792,47 +792,62 @@ if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
     delMessage();
     
     // دکمه‌های مرحله اولیه
+    $hash_id = substr($data, strlen('initincreaseWalletWithPerfectmoney'));
     $keyboard = [
         [
             ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
-            ['text' => 'ادامه خرید ✅', 'callback_data' => 'increaseWalletWithPerfectmoney' . substr($data, strlen('increaseWalletWithPerfectmoney'))]
+            ['text' => 'ادامه خرید ✅', 'callback_data' => 'increaseWalletWithPerfectmoney' . $hash_id]
         ]
     ];
     $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
 
     sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
-    $keyboard = array_chunk($keyboard, 1);
     exit;
 }
 
 if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
+    // استخراج hash_id از data
+    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
+
+    // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
     $stmt->execute();
     $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
+    // دریافت اطلاعات پرداخت از جدول pays
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
     $payInfo = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    $paymentAmount = $payInfo['price'];
-    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
-    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
-    $amountInUSD = $paymentAmount / $dollarPrice;
+    // بررسی اینکه آیا اطلاعات پرداخت به درستی بازیابی شده است
+    if ($payInfo) {
+        $paymentAmount = $payInfo['price'];
 
-    delMessage();
-    setUser("walletperfectmoneyVoucherCode" . $hash_id);
+        // دریافت نرخ ارز از API
+        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+        $amountInUSD = $paymentAmount / $dollarPrice;
 
-    sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
-                "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+        // حذف پیام قبلی و درخواست کد ووچر
+        delMessage();
+        $cancelKey = json_encode(['inline_keyboard' => [
+            [['text' => "لغو", 'callback_data' => "mainMenu"]]
+        ]]);
+        setUser("walletperfectmoneyVoucherCode" . $hash_id);
+
+        sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
+                    "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                    "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        // در صورت عدم یافتن اطلاعات پرداخت
+        sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
+    }
     exit;
 }
-
 if (preg_match('/perfectMoneyTutorial/', $data)) {
     forwardMessage($chat_id, '-1002042383972', 5); // فروارد پیام آموزشی از کانال دیگر
     exit;
@@ -2907,29 +2922,24 @@ if (preg_match('/initpayCustomWithPerfectmoney/', $data)) {
     delMessage();
     
     // دکمه‌های مرحله اولیه
+    $hash_id = substr($data, strlen('initpayCustomWithPerfectmoney'));
     $keyboard = [
         [
             ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
-            ['text' => 'ادامه خرید ✅', 'callback_data' => 'payCustomWithPerfectmoney' . substr($data, strlen('payCustomWithPerfectmoney'))]
+            ['text' => 'ادامه خرید ✅', 'callback_data' => 'payCustomWithPerfectmoney' . $hash_id]
         ]
     ];
     $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
 
     sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
-    $keyboard = array_chunk($keyboard, 1);
     exit;
 }
 
 
 // نمایش درخواست پرداخت با پرفکت مانی
 if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
-    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
-    $stmt->bind_param("s", $match[1]);
-    $stmt->execute();
-    $payInfo = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
-    $fid = $payInfo['plan_id'];
+    // استخراج hash_id از data
+    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -2938,19 +2948,36 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // محاسبه مبلغ پرداخت به دلار
-    $paymentAmount = $payInfo['price'];
-    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
-    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
-    $amountInUSD = $paymentAmount / $dollarPrice;
+    // دریافت اطلاعات پرداخت از جدول pays
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $hash_id);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
-    setUser($data);
-    delMessage();
-    setUser("perfectmoneyVoucherCode" . $match[1]);
+    // بررسی اینکه آیا اطلاعات پرداخت به درستی بازیابی شده است
+    if ($payInfo) {
+        $paymentAmount = $payInfo['price'];
 
-    sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
-                "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+        // دریافت نرخ ارز از API
+        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+        $amountInUSD = $paymentAmount / $dollarPrice;
+
+        // حذف پیام قبلی و درخواست کد ووچر
+        delMessage();
+        $cancelKey = json_encode(['inline_keyboard' => [
+            [['text' => "لغو", 'callback_data' => "mainMenu"]]
+        ]]);
+        setUser("walletperfectmoneyVoucherCode" . $hash_id);
+
+        sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
+                    "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                    "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        // در صورت عدم یافتن اطلاعات پرداخت
+        sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
+    }
     exit;
 }
 
@@ -3971,31 +3998,24 @@ if (preg_match('/initpaywithperfectmoneyvoucher/', $data)) {
     delMessage();
     
     // دکمه‌های مرحله اولیه
+    $hash_id = substr($data, strlen('initpaywithperfectmoneyvoucher'));
     $keyboard = [
         [
             ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
-            ['text' => 'ادامه خرید ✅', 'callback_data' => 'paywithperfectmoneyvoucher' . substr($data, strlen('paywithperfectmoneyvoucher'))]
+            ['text' => 'ادامه خرید ✅', 'callback_data' => 'paywithperfectmoneyvoucher' . $hash_id]
         ]
     ];
     $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
 
     sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
-    $keyboard = array_chunk($keyboard, 1);
     exit;
 }
 
 
 // نمایش درخواست پرداخت با پرفکت مانی
 if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
-    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
-    $stmt->bind_param("s", $match[1]);
-    $stmt->execute();
-    $payInfo = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
-    $fid = $payInfo['plan_id'];
-    
-
+    // استخراج hash_id از data
+    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -4004,19 +4024,36 @@ if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // محاسبه مبلغ پرداخت به دلار
-    $paymentAmount = $payInfo['price'];
-    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
-    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
-    $amountInUSD = $paymentAmount / $dollarPrice;
+    // دریافت اطلاعات پرداخت از جدول pays
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $hash_id);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
 
-    setUser($data);
-    delMessage();
-    setUser("perfectmoneyVoucherCode" . $match[1]);
+    // بررسی اینکه آیا اطلاعات پرداخت به درستی بازیابی شده است
+    if ($payInfo) {
+        $paymentAmount = $payInfo['price'];
 
-    sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
-                "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+        // دریافت نرخ ارز از API
+        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+        $amountInUSD = $paymentAmount / $dollarPrice;
+
+        // حذف پیام قبلی و درخواست کد ووچر
+        delMessage();
+        $cancelKey = json_encode(['inline_keyboard' => [
+            [['text' => "لغو", 'callback_data' => "mainMenu"]]
+        ]]);
+        setUser("walletperfectmoneyVoucherCode" . $hash_id);
+
+        sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
+                    "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                    "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        // در صورت عدم یافتن اطلاعات پرداخت
+        sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
+    }
     exit;
 }
 
