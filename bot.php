@@ -2658,7 +2658,6 @@ if((preg_match('/^discountCustomPlanDay(\d+)/',$userInfo['step'], $match) || pre
     
     
     if($botState['cartToCartState'] == "on") $keyboard[] = [['text' => $buttonValues['cart_to_cart'],  'callback_data' => "payCustomWithCartToCart$hash_id"]];
-    if($botState['paywithPerfectmoney'] == "on") $keyboard[] = [['text' => $buttonValues['perfectmoney'],  'callback_data' => "increaseWalletWithPerfectmoney" . $hash_id]];
     if($botState['nowPaymentOther'] == "on") $keyboard[] = [['text' => $buttonValues['now_payment_gateway'],  'url' => $botUrl . "pay/?nowpayment&hash_id=" . $hash_id]];
     if($botState['zarinpal'] == "on") $keyboard[] = [['text' => $buttonValues['zarinpal_gateway'],  'url' => $botUrl . "pay/?zarinpal&hash_id=" . $hash_id]];
     if($botState['nextpay'] == "on") $keyboard[] = [['text' => $buttonValues['nextpay_gateway'],  'url' => $botUrl . "pay/?nextpay&hash_id=" . $hash_id]];
@@ -3319,6 +3318,101 @@ if(preg_match('/payCustomWithCartToCart(.*)/',$userInfo['step'], $match) and $te
         sendMessage($mainValues['please_send_only_image']);
     }
 }
+
+// نمایش درخواست پرداخت با پرفکت مانی
+if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $match[1]);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    $fid = $payInfo['plan_id'];
+    
+    // بررسی ظرفیت پلن و سرور
+    $stmt = $connection->prepare("SELECT * FROM `server_plans` WHERE `id`=?");
+    $stmt->bind_param("i", $fid);
+    $stmt->execute();
+    $file_detail = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    $server_id = $file_detail['server_id'];
+    $acount = $file_detail['acount'];
+    $inbound_id = $file_detail['inbound_id'];
+
+    if ($acount == 0 && $inbound_id != 0) {
+        alert($mainValues['out_of_connection_capacity']);
+        exit;
+    }
+    if ($inbound_id == 0) {
+        $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
+        $stmt->bind_param("i", $server_id);
+        $stmt->execute();
+        $server_info = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        if ($server_info['ucount'] <= 0) {
+            alert($mainValues['out_of_server_capacity']);
+            exit;
+        }
+    } else {
+        if ($acount != 0 && $acount <= 0) {
+            sendMessage(str_replace("AMOUNT", $acount, $mainValues['can_create_specific_account']));
+            exit();
+        }
+    }
+
+    // دریافت کلیدهای پرداخت
+    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
+    $stmt->execute();
+    $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
+    $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
+    $stmt->close();
+
+    // محاسبه مبلغ پرداخت به دلار
+    $paymentAmount = $payInfo['price'];
+    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+    $amountInUSD = $paymentAmount / $dollarPrice;
+
+    setUser($data);
+    delMessage();
+    setUser("perfectmoneyVoucherCode" . $match[1]);
+
+    sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
+                "معادل دلاری: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
+    exit;
+}
+
+// دریافت کد ووچر پرفکت مانی
+if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+    if (!empty($text)) {
+        $voucherCode = $text;
+
+        $hash_id = $match[1];
+        setUser("perfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
+
+        sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        sendMessage($mainValues['please_send_only_text']);
+    }
+}
+
+// دریافت کد فعال‌سازی پرفکت مانی
+if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+    if (!empty($text)) {
+        $activationCode = $text;
+        $hash_id = $match[1];
+        $voucherCode = $match[2];
+
+        handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode);
+    } else {
+        sendMessage($mainValues['please_send_only_text']);
+    }
+}
+
+
 if(preg_match('/accCustom(.*)/',$data, $match) and $text != $buttonValues['cancel']){
     setUser();
 
