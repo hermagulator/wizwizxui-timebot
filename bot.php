@@ -825,10 +825,10 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     $amountInUSD = $paymentAmount / $dollarPrice;
 
     delMessage();
-    setUser("perfectmoneyVoucherCode" . $hash_id);
+    setUser("walletperfectmoneyVoucherCode" . $hash_id);
 
     sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "معادل دلاری: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
                 "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
     exit;
 }
@@ -838,7 +838,7 @@ if (preg_match('/perfectMoneyTutorial/', $data)) {
     exit;
 }
 
-if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+if (preg_match('/walletperfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $voucherCode = $text;
 
@@ -3380,7 +3380,7 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
     setUser("perfectmoneyVoucherCode" . $match[1]);
 
     sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "معادل دلاری: " . number_format($amountInUSD, 2) . " دلار\n\n" .
+                "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
                 "لطفا فقط کد ووچر را ارسال کنید:", $cancelKey, "HTML");
     exit;
 }
@@ -3406,7 +3406,7 @@ if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $mat
         $hash_id = $match[1];
         $voucherCode = $match[2];
 
-        handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode);
+        handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activationCode);
     } else {
         sendMessage($mainValues['please_send_only_text']);
     }
