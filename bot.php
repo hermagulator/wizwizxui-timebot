@@ -834,7 +834,7 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
 }
 
 if (preg_match('/perfectMoneyTutorial/', $data)) {
-    sendMessage("آموزش خرید ووچر پرفکت مانی:\n\n1. وارد سایت پرفکت مانی شوید...\n2. ...", "HTML");
+    forwardMessage($chat_id, '-1002042383972', 5); // فروارد پیام آموزشی از کانال دیگر
     exit;
 }
 
