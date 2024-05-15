@@ -1458,76 +1458,82 @@ if(preg_match('/^createAccAmount(\d+)_(\d+)_(\d+)/',$userInfo['step'], $match) &
     sendMessage("☑️|❤️ اکانت های جدید با موفقیت ساخته شد",getMainKeys());
     setUser();
 }
-if(preg_match('/payWithTronWallet(.*)/',$data,$match)) {
+if (preg_match('/payWithTronWallet(.*)/', $data, $match)) {
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $match[1]);
     $stmt->execute();
     $payInfo = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    
+
+    // دریافت قیمت TRX به صورت لحظه‌ای
+    $trxRate = getTRXRate();
+    if ($trxRate === null) {
+        sendMessage("Unable to fetch TRX rate. Please try again later.");
+        exit;
+    }
+
     $fid = $payInfo['plan_id'];
     $type = $payInfo['type'];
-    
+
     $stmt = $connection->prepare("SELECT * FROM `server_plans` WHERE `id`=?");
     $stmt->bind_param("i", $fid);
     $stmt->execute();
     $file_detail = $stmt->get_result()->fetch_assoc();
     $stmt->close();
-    
+
     $server_id = $file_detail['server_id'];
     $acount = $file_detail['acount'];
     $inbound_id = $file_detail['inbound_id'];
 
-    if($type != "INCREASE_WALLET" && $type != "RENEW_ACCOUNT"){
-        if($acount <= 0 and $inbound_id != 0){
+    if ($type != "INCREASE_WALLET" && $type != "RENEW_ACCOUNT") {
+        if ($acount <= 0 && $inbound_id != 0) {
             alert($mainValues['out_of_connection_capacity']);
             exit;
         }
-        if($inbound_id == 0) {
+        if ($inbound_id == 0) {
             $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
             $stmt->bind_param("i", $server_id);
             $stmt->execute();
             $server_info = $stmt->get_result()->fetch_assoc();
             $stmt->close();
-    
-            if($server_info['ucount'] <= 0) {
+
+            if ($server_info['ucount'] <= 0) {
                 alert($mainValues['out_of_server_capacity']);
-                exit; 
+                exit;
             }
-        }else{
-            if($acount <= 0){
+        } else {
+            if ($acount <= 0) {
                 alert($mainValues['out_of_server_capacity']);
                 exit();
             }
         }
     }
-    
-    if($type == "RENEW_ACCOUNT"){
+
+    if ($type == "RENEW_ACCOUNT") {
         $oid = $payInfo['plan_id'];
-        
+
         $stmt = $connection->prepare("SELECT * FROM `orders_list` WHERE `id` = ?");
         $stmt->bind_param("i", $oid);
         $stmt->execute();
         $order = $stmt->get_result();
         $stmt->close();
-        if($order->num_rows == 0){
+        if ($order->num_rows == 0) {
             delMessage();
             sendMessage($mainValues['config_not_found'], getMainKeys());
             exit();
         }
-
     }
-    
+
     delMessage();
-    
+
     $price = $payInfo['price'];
-    $priceInTrx = round($price / $botState['TRXRate'],2);
-    
+    $priceInTrx = round($price / $trxRate, 2);
+
     $stmt = $connection->prepare("UPDATE `pays` SET `tron_price` = ? WHERE `hash_id` = ?");
     $stmt->bind_param("ds", $priceInTrx, $match[1]);
     $stmt->execute();
     $stmt->close();
-    
+
     sendMessage(str_replace(["AMOUNT", "TRON-WALLET"], [$priceInTrx, $paymentKeys['tronwallet']], $mainValues['pay_with_tron_wallet']), $cancelKey, "html");
     setUser($data);
 }
