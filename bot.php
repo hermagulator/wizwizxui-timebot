@@ -791,8 +791,10 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
 if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
     delMessage();
     
-    // دکمه‌های مرحله اولیه
+    // استخراج `hash_id` از `callback_data`
     $hash_id = substr($data, strlen('initincreaseWalletWithPerfectmoney'));
+
+    // دکمه‌های مرحله اولیه
     $keyboard = [
         [
             ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
@@ -806,7 +808,7 @@ if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
 }
 
 if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
-    // استخراج hash_id از data
+    // استخراج `hash_id` از `callback_data`
     $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
 
     // دریافت کلیدهای پرداخت
@@ -816,7 +818,7 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // دریافت اطلاعات پرداخت از جدول pays
+    // دریافت اطلاعات پرداخت از جدول `pays`
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
@@ -847,23 +849,6 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
         sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
     }
     exit;
-}
-if (preg_match('/perfectMoneyTutorial/', $data)) {
-    forwardMessage($chat_id, '-1002042383972', 5); // فروارد پیام آموزشی از کانال دیگر
-    exit;
-}
-
-if (preg_match('/walletperfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
-    if (!empty($text)) {
-        $voucherCode = $text;
-
-        $hash_id = $match[1];
-        setUser("perfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
-
-        sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
-    } else {
-        sendMessage($mainValues['please_send_only_text']);
-    }
 }
 
 if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
@@ -2938,8 +2923,8 @@ if (preg_match('/initpayCustomWithPerfectmoney/', $data)) {
 
 // نمایش درخواست پرداخت با پرفکت مانی
 if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
-    // استخراج hash_id از data
-    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
+    // استخراج `hash_id` از `callback_data`
+    $hash_id = substr($data, strlen('payCustomWithPerfectmoney'));
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -2948,7 +2933,7 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // دریافت اطلاعات پرداخت از جدول pays
+    // دریافت اطلاعات پرداخت از جدول `pays`
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
@@ -2969,7 +2954,7 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
         $cancelKey = json_encode(['inline_keyboard' => [
             [['text' => "لغو", 'callback_data' => "mainMenu"]]
         ]]);
-        setUser("walletperfectmoneyVoucherCode" . $hash_id);
+        setUser("payCustomperfectmoneyVoucherCode" . $hash_id);
 
         sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
                     "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
@@ -2988,12 +2973,12 @@ if (preg_match('/perfectMoneyTutorial/', $data)) {
 
 
 // دریافت کد ووچر پرفکت مانی
-if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+if (preg_match('/payCustomperfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $voucherCode = $text;
 
         $hash_id = $match[1];
-        setUser("perfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
+        setUser("payCustomperfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
 
         sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
     } else {
@@ -3002,7 +2987,7 @@ if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $t
 }
 
 // دریافت کد فعال‌سازی پرفکت مانی
-if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+if (preg_match('/payCustomperfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $activationCode = $text;
         $hash_id = $match[1];
@@ -4014,8 +3999,8 @@ if (preg_match('/initpaywithperfectmoneyvoucher/', $data)) {
 
 // نمایش درخواست پرداخت با پرفکت مانی
 if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
-    // استخراج hash_id از data
-    $hash_id = substr($data, strlen('increaseWalletWithPerfectmoney'));
+    // استخراج `hash_id` از `callback_data`
+    $hash_id = substr($data, strlen('paywithperfectmoneyvoucher'));
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -4024,7 +4009,7 @@ if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // دریافت اطلاعات پرداخت از جدول pays
+    // دریافت اطلاعات پرداخت از جدول `pays`
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
@@ -4045,7 +4030,7 @@ if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
         $cancelKey = json_encode(['inline_keyboard' => [
             [['text' => "لغو", 'callback_data' => "mainMenu"]]
         ]]);
-        setUser("walletperfectmoneyVoucherCode" . $hash_id);
+        setUser("paywithperfectmoneyvoucherVoucherCode" . $hash_id);
 
         sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
                     "مبلغ ووچر: " . number_format($amountInUSD, 2) . " دلار\n\n" .
