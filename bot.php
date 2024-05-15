@@ -1473,6 +1473,9 @@ if (preg_match('/payWithTronWallet(.*)/', $data, $match)) {
         exit;
     }
 
+    $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+    $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+
     $fid = $payInfo['plan_id'];
     $type = $payInfo['type'];
 
@@ -1528,7 +1531,8 @@ if (preg_match('/payWithTronWallet(.*)/', $data, $match)) {
     delMessage();
 
     $price = $payInfo['price'];
-    $priceInTrx = round($price / $trxRate, 2);
+    $usdprice = round($price / $dollarPrice, 2);
+    $priceInTrx = $usdprice * $trxRate;
 
     $stmt = $connection->prepare("UPDATE `pays` SET `tron_price` = ? WHERE `hash_id` = ?");
     $stmt->bind_param("ds", $priceInTrx, $match[1]);
