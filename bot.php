@@ -1532,7 +1532,7 @@ if (preg_match('/payWithTronWallet(.*)/', $data, $match)) {
 
     $price = $payInfo['price'];
     $usdprice = round($price / $dollarPrice, 2);
-    $priceInTrx = $usdprice / $trxRate;
+    $priceInTrx = round($usdprice / $trxRate, 2);
 
     $stmt = $connection->prepare("UPDATE `pays` SET `tron_price` = ? WHERE `hash_id` = ?");
     $stmt->bind_param("ds", $priceInTrx, $match[1]);
