@@ -190,12 +190,13 @@ if($data=="changeUpdateConfigLinkState" && ($from_id == $admin || $userInfo['isA
     setSettings('updateConnectionState', $newValue);
     editText($message_id,$mainValues['change_bot_settings_message'],getBotSettingKeys());
 }
-if(($data=="gateWays_Channels" or preg_match("/^changeGateWays(\w+)/",$data,$match)) && ($from_id == $admin || $userInfo['isAdmin'] == true)){
-    if($data!="gateWays_Channels"){
-        $newValue = $botState[$match[1]]=="on"?"off":"on";
-        setSettings($match[1], $newValue);
+if (($data == "gateWays_Channels" || preg_match("/^changeGateWays_(\w+)/", $data, $match)) && ($from_id == $admin || $userInfo['isAdmin'] == true)) {
+    if ($data != "gateWays_Channels") {
+        $settingKey = $match[1];
+        $newValue = $botState[$settingKey] == "on" ? "off" : "on";
+        setSettings($settingKey, $newValue);
     }
-    editText($message_id,$mainValues['change_bot_settings_message'],getGateWaysKeys());
+    editText($message_id, $mainValues['change_bot_settings_message'], getGateWaysKeys());
 }
 if($data=="changeConfigRemarkType"){
     switch($botState['remark']){
