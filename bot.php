@@ -801,6 +801,7 @@ if (preg_match('/increaseWalletWithPerfectmoneyInit/', $data)) {
     $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
 
     sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
+    $keyboard = array_chunk($keyboard, 1);
     exit;
 }
 
