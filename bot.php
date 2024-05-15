@@ -794,7 +794,7 @@ if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
     // دکمه‌های مرحله اولیه
     $keyboard = [
         [
-            ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
+            ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'];
             ['text' => 'ادامه خرید ✅', 'callback_data' => 'increaseWalletWithPerfectmoney' . substr($data, strlen('increaseWalletWithPerfectmoneyInit'))]
         ]
     ];
