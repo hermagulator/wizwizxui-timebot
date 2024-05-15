@@ -773,7 +773,7 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     
     $keyboard = array();
     if($botState['cartToCartState'] == "on") $keyboard[] = [['text' => $buttonValues['cart_to_cart'],  'callback_data' => "increaseWalletWithCartToCart" . $hash_id]];
-    if($botState['paywithPerfectmoney'] == "on") $keyboard[] = [['text' => $buttonValues['perfectmoney'],  'callback_data' => "increaseWalletWithPerfectmoney" . $hash_id]];
+    if($botState['paywithPerfectmoney'] == "on") $keyboard[] = [['text' => $buttonValues['perfectmoney'],  'callback_data' => "increaseWalletWithPerfectmoneyinit" . $hash_id]];
     if($botState['nowPaymentWallet'] == "on") $keyboard[] = [['text' => $buttonValues['now_payment_gateway'],  'url' => $botUrl . "pay/?nowpayment&hash_id=" . $hash_id]];
     if($botState['zarinpal'] == "on") $keyboard[] = [['text' => $buttonValues['zarinpal_gateway'],  'url' => $botUrl . "pay/?zarinpal&hash_id=" . $hash_id]];
     if($botState['nextpay'] == "on") $keyboard[] = [['text' => $buttonValues['nextpay_gateway'],  'url' => $botUrl . "pay/?nextpay&hash_id=" . $hash_id]];
@@ -788,6 +788,21 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     setUser();
 }
 
+if (preg_match('/increaseWalletWithPerfectmoneyInit/', $data)) {
+    delMessage();
+    
+    // دکمه‌های مرحله اولیه
+    $keyboard = [
+        [
+            ['text' => 'آموزش خرید با ووچر پرفکت مانی🚀', 'callback_data' => 'perfectMoneyTutorial'],
+            ['text' => 'ادامه خرید ✅', 'callback_data' => 'increaseWalletWithPerfectmoney' . substr($data, strlen('increaseWalletWithPerfectmoneyInit'))]
+        ]
+    ];
+    $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
+
+    sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
+    exit;
+}
 
 if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -817,6 +832,11 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     exit;
 }
 
+if (preg_match('/perfectMoneyTutorial/', $data)) {
+    sendMessage("آموزش خرید ووچر پرفکت مانی:\n\n1. وارد سایت پرفکت مانی شوید...\n2. ...", "HTML");
+    exit;
+}
+
 if (preg_match('/perfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $voucherCode = $text;
@@ -841,7 +861,6 @@ if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $mat
         sendMessage($mainValues['please_send_only_text']);
     }
 }
-
 
 if(preg_match('/increaseWalletWithCartToCart/',$data)) {
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
