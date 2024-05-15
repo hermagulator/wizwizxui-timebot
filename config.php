@@ -1309,6 +1309,8 @@ function getDiscountCodeKeys(){
 function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
     global $connection, $mainValues, $userInfo, $admin;
 
+    $removeKeyboard = json_encode(['remove_keyboard' => true]);
+
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
@@ -1340,6 +1342,7 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
         sendMessage("خطا در درخواست پرداخت ووچر: " . curl_error($ch));
         curl_close($ch);
         sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        sendMessage($removeKeyboard);
         setUser();
     }
     curl_close($ch);
@@ -1361,7 +1364,9 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
             sendMessage("پرداخت ووچر شما به این علت از طرف پرفکت مانی دریافت نشد: \n\n$errorMessage");
         }
         sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        sendMessage($removeKeyboard);
         setUser();
+
     } else {
         $voucherAmount = (float) $outputFields['VOUCHER_AMOUNT'];
         $voucherNumber = $outputFields['VOUCHER_NUM'];
