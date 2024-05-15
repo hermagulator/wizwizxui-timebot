@@ -2930,39 +2930,6 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
     $stmt->close();
     
     $fid = $payInfo['plan_id'];
-    
-    // بررسی ظرفیت پلن و سرور
-    $stmt = $connection->prepare("SELECT * FROM `server_plans` WHERE `id`=?");
-    $stmt->bind_param("i", $fid);
-    $stmt->execute();
-    $file_detail = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
-    $server_id = $file_detail['server_id'];
-    $acount = $file_detail['acount'];
-    $inbound_id = $file_detail['inbound_id'];
-
-    if ($acount == 0 && $inbound_id != 0) {
-        alert($mainValues['out_of_connection_capacity']);
-        exit;
-    }
-    if ($inbound_id == 0) {
-        $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
-        $stmt->bind_param("i", $server_id);
-        $stmt->execute();
-        $server_info = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if ($server_info['ucount'] <= 0) {
-            alert($mainValues['out_of_server_capacity']);
-            exit;
-        }
-    } else {
-        if ($acount != 0 && $acount <= 0) {
-            sendMessage(str_replace("AMOUNT", $acount, $mainValues['can_create_specific_account']));
-            exit();
-        }
-    }
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
@@ -4028,38 +3995,7 @@ if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
     
     $fid = $payInfo['plan_id'];
     
-    // بررسی ظرفیت پلن و سرور
-    $stmt = $connection->prepare("SELECT * FROM `server_plans` WHERE `id`=?");
-    $stmt->bind_param("i", $fid);
-    $stmt->execute();
-    $file_detail = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-    
-    $server_id = $file_detail['server_id'];
-    $acount = $file_detail['acount'];
-    $inbound_id = $file_detail['inbound_id'];
 
-    if ($acount == 0 && $inbound_id != 0) {
-        alert($mainValues['out_of_connection_capacity']);
-        exit;
-    }
-    if ($inbound_id == 0) {
-        $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
-        $stmt->bind_param("i", $server_id);
-        $stmt->execute();
-        $server_info = $stmt->get_result()->fetch_assoc();
-        $stmt->close();
-
-        if ($server_info['ucount'] <= 0) {
-            alert($mainValues['out_of_server_capacity']);
-            exit;
-        }
-    } else {
-        if ($acount != 0 && $acount <= 0) {
-            sendMessage(str_replace("AMOUNT", $acount, $mainValues['can_create_specific_account']));
-            exit();
-        }
-    }
 
     // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
