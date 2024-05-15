@@ -934,7 +934,7 @@ function getGateWaysKeys() {
         ['text' => "درگاه NowPayment سایر", 'callback_data'=> "wizwizch"]
     ];
     $buttons[] = [
-        ['text' => $botState['tronWallet'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaystron_wallet"],
+        ['text' => $botState['tronWallet'] == "on" ? $buttonValues['on'] : $buttonValues['off'], 'callback_data' => "changeGateWaystronwallet"],
         ['text' => "درگاه ترون", 'callback_data' => "wizwizch"]
     ];
     $buttons[] = [
