@@ -835,10 +835,6 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
         $amountInUSD = $paymentAmount / $dollarPrice;
 
         // حذف پیام قبلی و درخواست کد ووچر
-        delMessage();
-        $cancelKey = json_encode(['inline_keyboard' => [
-            [['text' => "لغو", 'callback_data' => "mainMenu"]]
-        ]]);
         setUser("walletperfectmoneyVoucherCode" . $hash_id);
 
         sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
@@ -2970,10 +2966,6 @@ if (preg_match('/payCustomWithPerfectmoney(.*)/', $data, $match)) {
         $amountInUSD = $paymentAmount / $dollarPrice;
 
         // حذف پیام قبلی و درخواست کد ووچر
-        delMessage();
-        $cancelKey = json_encode(['inline_keyboard' => [
-            [['text' => "لغو", 'callback_data' => "mainMenu"]]
-        ]]);
         setUser("payCustomperfectmoneyVoucherCode" . $hash_id);
 
         sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
@@ -4046,10 +4038,6 @@ if (preg_match('/paywithperfectmoneyvoucher(.*)/', $data, $match)) {
         $amountInUSD = $paymentAmount / $dollarPrice;
 
         // حذف پیام قبلی و درخواست کد ووچر
-        delMessage();
-        $cancelKey = json_encode(['inline_keyboard' => [
-            [['text' => "لغو", 'callback_data' => "mainMenu"]]
-        ]]);
         setUser("paywithperfectmoneyvoucherVoucherCode" . $hash_id);
 
         sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
