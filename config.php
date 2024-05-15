@@ -595,6 +595,16 @@ function NOWPayments($method, $endpoint, $datas = []){
     if(curl_error($ch)) var_dump(curl_error($ch));
     else return json_decode($res);
 }
+function getTRXRate() {
+    $url = "https://api.binance.com/api/v3/ticker/price?symbol=TRXUSDT";
+    $response = file_get_contents($url);
+    if ($response === FALSE) {
+        return null; // در صورت عدم موفقیت در فراخوانی API
+    }
+
+    $data = json_decode($response, true);
+    return isset($data['price']) ? floatval($data['price']) : null;
+}
 function getServerConfigKeys($serverId,$offset = 0){
     global $connection, $mainValues, $buttonValues;
     $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
