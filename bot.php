@@ -851,6 +851,26 @@ if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     exit;
 }
 
+if (preg_match('/perfectMoneyTutorial/', $data)) {
+    forwardMessage($chat_id, '-1002042383972', 5); // فروارد پیام آموزشی از کانال دیگر
+    exit;
+}
+
+
+// دریافت کد ووچر پرفکت مانی
+if (preg_match('/walletperfectmoneyVoucherCode(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+    if (!empty($text)) {
+        $voucherCode = $text;
+
+        $hash_id = $match[1];
+        setUser("perfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
+
+        sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
+    } else {
+        sendMessage($mainValues['please_send_only_text']);
+    }
+}
+
 if (preg_match('/perfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $activationCode = $text;
@@ -2978,7 +2998,7 @@ if (preg_match('/payCustomperfectmoneyVoucherCode(.*)/', $userInfo['step'], $mat
         $voucherCode = $text;
 
         $hash_id = $match[1];
-        setUser("payCustomperfectmoneyActivationCode" . $hash_id . "|" . $voucherCode);
+        setUser("payCustomperfectmoneyyActivationCode" . $hash_id . "|" . $voucherCode);
 
         sendMessage("لطفا کد فعالسازی ووچر را ارسال کنید:", $cancelKey, "HTML");
     } else {
@@ -2987,7 +3007,7 @@ if (preg_match('/payCustomperfectmoneyVoucherCode(.*)/', $userInfo['step'], $mat
 }
 
 // دریافت کد فعال‌سازی پرفکت مانی
-if (preg_match('/payCustomperfectmoneyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
+if (preg_match('/payCustomperfectmoneyyActivationCode(.*)\|(.*)/', $userInfo['step'], $match) && $text != $buttonValues['cancel']) {
     if (!empty($text)) {
         $activationCode = $text;
         $hash_id = $match[1];
