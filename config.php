@@ -1408,6 +1408,8 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
             ]);
             sendMessage($msg, $keyboard, "HTML", $admin);
             sendMessage($mainValues['reached_main_menu'], getMainKeys());
+            sendMessage($removeKeyboard);
+            setUser();
         } else {
             $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
             $stmt->bind_param("di", $paymentAmount, $userId);
@@ -1429,6 +1431,8 @@ function handlePerfectMoneyPayment($hash_id, $voucherCode, $activationCode) {
             ]);
             sendMessage($msg, $keyboard, "HTML", $admin);
             sendMessage($mainValues['reached_main_menu'], getMainKeys());
+            sendMessage($removeKeyboard);
+            setUser();
         }
     }
 }
