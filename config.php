@@ -1566,7 +1566,7 @@ function handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activation
             $payInfo = $stmt->get_result()->fetch_assoc();
             $stmt->close();
             
-            $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'paid_with_perfectmoney' WHERE `hash_id` = ?");
+            $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'paid_with_wallet' WHERE `hash_id` = ?");
             $stmt->bind_param("s", $match[1]);
             $stmt->execute();
             $stmt->close();
@@ -1590,6 +1590,11 @@ function handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activation
             $type = $file_detail['type'];
             $protocol = $file_detail['protocol'];
             $price = $payInfo['price'];
+        
+            if($userInfo['wallet'] < $price){
+                alert("موجودی حساب شما کم است");
+                exit();
+            }
             
             
             $server_id = $file_detail['server_id'];
@@ -1796,6 +1801,431 @@ function handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activation
                 ]]);
             $msg = str_replace(['TYPE', 'USER-ID', 'USERNAME', 'NAME', 'PRICE', 'REMARK', 'VOLUME', 'DAYS'],
                         ['کیف پول', $from_id, $username, $first_name, $price, $remark,$volume, $days], $mainValues['buy_custom_account_request']);
+            sendMessage($msg,$keys,"html", $admin);
+        }
+    }
+}
+
+function handlepaywithperfectmoneyvoucher($hash_id, $voucherCode, $activationCode) {
+    global $connection, $mainValues, $userInfo, $admin;
+
+    $removeKeyboard = json_encode(['remove_keyboard' => true]);
+
+    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+    $stmt->bind_param("s", $hash_id);
+    $stmt->execute();
+    $payInfo = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    $paymentAmount = $payInfo['price'];
+    $userId = $payInfo['user_id'];
+
+    // دریافت اطلاعات پرفکت مانی از تنظیمات
+    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
+    $stmt->execute();
+    $paymentKeys = json_decode($stmt->get_result()->fetch_assoc()['value'], true) ?? [];
+    $stmt->close();
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, "https://perfectmoney.com/acct/ev_activate.asp");
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'AccountID' => $paymentKeys['PerfectMoneyAccountID'],
+        'PassPhrase' => $paymentKeys['PassPhrase'],
+        'Payee_Account' => $paymentKeys['Payee_Account'],
+        'ev_number' => $voucherCode,
+        'ev_code' => $activationCode
+    ]));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+    $response = curl_exec($ch);
+    if ($response === false) {
+        sendMessage("خطا در درخواست پرداخت ووچر: " . curl_error($ch));
+        curl_close($ch);
+        sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        sendMessage($removeKeyboard);
+        setUser();
+    }
+    curl_close($ch);
+
+    $doc = new DOMDocument();
+    @$doc->loadHTML($response);
+
+    $outputFields = [];
+    $inputs = $doc->getElementsByTagName('input');
+    foreach ($inputs as $input) {
+        $outputFields[$input->getAttribute('name')] = $input->getAttribute('value');
+    }
+    
+    if (isset($outputFields['ERROR'])) {
+        $errorMessage = $outputFields['ERROR'];
+        if ($errorMessage == 'Invalid ev_number') {
+            sendMessage("شماره ووچر وارد شده نامعتبر است. پرداخت لغو شد.");
+        } else {
+            sendMessage("پرداخت ووچر شما به این علت از طرف پرفکت مانی دریافت نشد: \n\n$errorMessage");
+        }
+        sendMessage($mainValues['reached_main_menu'], getMainKeys());
+        sendMessage($removeKeyboard);
+        setUser();
+
+    } else {
+        $voucherAmount = (float) $outputFields['VOUCHER_AMOUNT'];
+        $voucherNumber = $outputFields['VOUCHER_NUM'];
+        $voucherCurrency = $outputFields['VOUCHER_AMOUNT_CURRENCY'];
+        $payeeBatchNum = $outputFields['PAYMENT_BATCH_NUM'];
+        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
+        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
+        $payedAmount = $voucherAmount * $dollarPrice;
+        $diffAmount = $paymentAmount - $payedAmount;
+        $percentageDiff = abs($diffAmount) / $paymentAmount * 100;
+    
+        if ($percentageDiff > 8) {
+            sendMessage("⚠️ پرداخت با موفقیت انجام شد اما مبلغ ووچر پرداخت شده با مبلغ درخواستی متفاوت است.\n\n" .
+                        "مبلغ ووچر: " . number_format($voucherAmount) . " $voucherCurrency\n" .
+                        "شماره ووچر: $voucherNumber\n" .
+                        "شماره پرداخت: $payeeBatchNum\n" .
+                        "مبلغ درخواستی: " . number_format($paymentAmount) . " تومان\n" .
+                        "درصد باقی مانده: " . number_format($percentageDiff, 2) . "%\n" .
+                        "مبلغ باقی مانده: " . number_format($diffAmount) . " تومان\n" .
+                        "مبلغ پرداخت شده: " . number_format($payedAmount) . " تومان\n");
+    
+            $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
+            $stmt->bind_param("di", $payedAmount, $userId);
+            $stmt->execute();
+            $stmt->close();
+    
+            
+            if($userInfo['wallet'] < $price){
+
+                $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'approved' WHERE `hash_id` = ?");
+                $stmt->bind_param("s", $hash_id);
+                $stmt->execute();
+                $stmt->close();
+
+                alert("مبلغ دریافتی را با موجودی کیف پولتان جمع زدیم اما مبلغ سرویس بیشتر از موجودی کیف پول شماست 😔");
+                sendMessage("افزایش حساب شما با موفقیت انجام شد\n✅ مبلغ " . number_format($payedAmount) . " تومان به حساب شما اضافه شد", null, null, $userId);
+        
+                $msg = str_replace(['PRICE', 'USERNAME', 'NAME', 'USER-ID'], [number_format($payedAmount), $userInfo['username'], $userInfo['name'], $userId], $mainValues['increase_wallet_request_message']);
+                $keyboard = json_encode([
+                    'inline_keyboard' => [
+                        [['text' => '✅', 'callback_data' => "dontsendanymore"]]
+                    ]
+                ]);
+                sendMessage($msg, $keyboard, "HTML", $admin);
+                sendMessage($mainValues['reached_main_menu'], getMainKeys());
+                sendMessage($removeKeyboard);
+                setUser();
+                exit();
+            } else {
+                alert("مبلغ دریافتی را با موجودی کیف پولتان جمع زدیم شما در حال حاضر قادر به پرداخت هزینه سرویس هستید 😍");
+            }
+            
+    
+        } else {
+            
+            $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
+            $stmt->bind_param("di", $paymentAmount, $userId);
+            $stmt->execute();
+            $stmt->close();
+
+            setUser();
+
+            $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
+            $stmt->bind_param("s", $match[1]);
+            $stmt->execute();
+            $payInfo = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            
+            
+            $uid = $from_id;
+            $fid = $payInfo['plan_id'];
+            $acctxt = '';
+            
+            
+            $stmt = $connection->prepare("SELECT * FROM `server_plans` WHERE `id`=?");
+            $stmt->bind_param("i", $fid);
+            $stmt->execute();
+            $file_detail = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+        
+            $days = $file_detail['days'];
+            $date = time();
+            $expire_microdate = floor(microtime(true) * 1000) + (864000 * $days * 100);
+            $expire_date = $date + (86400 * $days);
+            $type = $file_detail['type'];
+            $volume = $file_detail['volume'];
+            $protocol = $file_detail['protocol'];
+            $rahgozar = $file_detail['rahgozar'];
+            $customPath = $file_detail['custom_path'];
+            $price = $payInfo['price'];
+            $customPort = $file_detail['custom_port'];
+            $customSni = $file_detail['custom_sni'];
+            
+            if($userInfo['wallet'] < $price){
+                alert("موجودی حساب شما کم است");
+                exit();
+            }
+        
+            $stmt = $connection->prepare("UPDATE `pays` SET `state` = 'paid_with_wallet' WHERE `hash_id` = ?");
+            $stmt->bind_param("s", $match[1]);
+            $stmt->execute();
+            $stmt->close();
+        
+            
+            
+            $server_id = $file_detail['server_id'];
+            $netType = $file_detail['type'];
+            $acount = $file_detail['acount'];
+            $inbound_id = $file_detail['inbound_id'];
+            $limitip = $file_detail['limitip'];
+        
+        
+            if($payInfo['type'] == "RENEW_SCONFIG"){
+                $configInfo = json_decode($payInfo['description'],true);
+                $uuid = $configInfo['uuid'];
+                $remark = $configInfo['remark'];
+                $isMarzban = $configInfo['marzban'];
+                
+                $inbound_id = $payInfo['volume']; 
+                
+                if($isMarzban){
+                    $response = editMarzbanConfig($server_id, ['remark'=>$remark, 'days'=>$days, 'volume' => $volume]);
+                }else{
+                    if($inbound_id > 0)
+                        $response = editClientTraffic($server_id, $inbound_id, $uuid, $volume, $days, "renew");
+                    else
+                        $response = editInboundTraffic($server_id, $uuid, $volume, $days, "renew");
+                }
+                
+                if(is_null($response)){
+                    alert('🔻مشکل فنی در اتصال به سرور. لطفا به مدیریت اطلاع بدید',true);
+                    exit;
+                }
+                $stmt = $connection->prepare("INSERT INTO `increase_order` VALUES (NULL, ?, ?, ?, ?, ?, ?);");
+                $stmt->bind_param("iiisii", $uid, $server_id, $inbound_id, $remark, $price, $time);
+                $stmt->execute();
+                $stmt->close();
+                $keys = json_encode(['inline_keyboard'=>[
+                    [
+                        ['text'=>$buttonValues['back_to_main'],'callback_data'=>"mainMenu"]
+                    ],
+                    ]]);
+                editText($message_id,"✅سرویس $remark با موفقیت تمدید شد",$keys);
+            }else{
+                $accountCount = $payInfo['agent_count']!=0?$payInfo['agent_count']:1;
+                
+                if($acount == 0 and $inbound_id != 0){
+                    alert($mainValues['out_of_connection_capacity']);
+                    exit;
+                }
+                if($inbound_id == 0) {
+                    $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
+                    $stmt->bind_param("i", $server_id);
+                    $stmt->execute();
+                    $server_info = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+            
+                    if($server_info['ucount'] <= 0) {
+                        alert($mainValues['out_of_server_capacity']);
+                        exit;
+                    }
+                }        
+            
+                $stmt = $connection->prepare("SELECT * FROM `server_info` WHERE `id`=?");
+                $stmt->bind_param("i", $server_id);
+                $stmt->execute();
+                $serverInfo = $stmt->get_result()->fetch_assoc();
+                $srv_remark = $serverInfo['remark'];
+                $serverTitle = $serverInfo['title'];
+                $stmt->close();
+            
+                $stmt = $connection->prepare("SELECT * FROM `server_config` WHERE `id`=?");
+                $stmt->bind_param("i", $server_id);
+                $stmt->execute();
+                $serverConfig = $stmt->get_result()->fetch_assoc();
+                $portType = $serverConfig['port_type'];
+                $serverType = $serverConfig['type'];
+                $panelUrl = $serverConfig['panel_url'];
+                $stmt->close();
+        
+                include 'phpqrcode/qrlib.php';
+                $msg = $message_id;
+        
+                $agent_bought = false;
+                $eachPrice = $price / $accountCount;
+                if($userInfo['is_agent'] == true && ($userInfo['temp'] == "agentBuy" || $userInfo['temp'] == "agentMuchBuy")) {$agent_bought = true; setUser('', 'temp');}
+        
+                alert($mainValues['sending_config_to_user']);
+                define('IMAGE_WIDTH',540);
+                define('IMAGE_HEIGHT',540);
+                for($i = 1; $i <= $accountCount; $i++){
+                    $uniqid = generateRandomString(42,$protocol); 
+                
+                    $savedinfo = file_get_contents('settings/temp.txt');
+                    $savedinfo = explode('-',$savedinfo);
+                    $port = $savedinfo[0] + 1;
+                    $last_num = $savedinfo[1] + 1;
+                
+                
+                    if($botState['remark'] == "digits"){
+                        $rnd = rand(10000,99999);
+                        $remark = "{$srv_remark}-{$rnd}";
+                    }
+                    elseif($botState['remark'] == "manual"){
+                        $remark = $payInfo['description'];
+                    }
+                    else{
+                        $rnd = rand(1111,99999);
+                        $remark = "{$srv_remark}-{$from_id}-{$rnd}";
+                    }
+                
+                    if($portType == "auto"){
+                        file_put_contents('settings/temp.txt',$port.'-'.$last_num);
+                    }else{
+                        $port = rand(1111,65000);
+                    }
+                
+                    if($inbound_id == 0){    
+                        if($serverType == "marzban"){
+                            $response = addMarzbanUser($server_id, $remark, $volume, $days, $fid);
+                            if(!$response->success){
+                                if($response->msg == "User already exists"){
+                                    $remark .= rand(1111,99999);
+                                    $response = addMarzbanUser($server_id, $remark, $volume, $days, $fid);
+                                }
+                            }
+                        }
+                        else{
+                            $response = addUser($server_id, $uniqid, $protocol, $port, $expire_microdate, $remark, $volume, $netType, 'none', $rahgozar, $fid); 
+                            if(!$response->success){
+                                if(strstr($response->msg, "Duplicate email")) $remark .= RandomString();
+                                elseif(strstr($response->msg, "Port already exists")) $port = rand(1111,65000);
+        
+                                $response = addUser($server_id, $uniqid, $protocol, $port, $expire_microdate, $remark, $volume, $netType, 'none', $rahgozar, $fid);
+                            }
+                        }
+                    }else {
+                        $response = addInboundAccount($server_id, $uniqid, $inbound_id, $expire_microdate, $remark, $volume, $limitip, null, $fid); 
+                        if(!$response->success){
+                            if(strstr($response->msg, "Duplicate email")) $remark .= RandomString();
+        
+                            $response = addInboundAccount($server_id, $uniqid, $inbound_id, $expire_microdate, $remark, $volume, $limitip, null, $fid);
+                        } 
+                    }
+                    if(is_null($response)){
+                        sendMessage('❌ | 🥺 گلم ، اتصال به سرور برقرار نیست لطفا مدیر رو در جریان بزار ...');
+                        exit;
+                    }
+                    if($response == "inbound not Found"){
+                        sendMessage("❌ | 🥺 سطر (inbound) با آیدی $inbound_id تو این سرور وجود نداره ، مدیر رو در جریان بزار ...");
+                        exit;
+                    }
+                    if(!$response->success){
+                        sendMessage('❌ | 😮 وای خطا داد لطفا سریع به مدیر بگو ...');
+                        sendMessage("خطای سرور {$serverInfo['title']}:\n\n" . ($response->msg), null, null, $admin);
+                        exit;
+                    }
+                
+                
+                    if($serverType == "marzban"){
+                        $uniqid = $token = str_replace("/sub/", "", $response->sub_link);
+                        $subLink = $botState['subLinkState'] == "on"?$panelUrl . $response->sub_link:"";
+                        $vraylink = [$subLink];
+                        $vray_link= json_encode($response->vray_links);
+                    }
+                    else{
+                        $token = RandomString(30);
+                        $vraylink = getConnectionLink($server_id, $uniqid, $protocol, $remark, $port, $netType, $inbound_id, $rahgozar, $customPath, $customPort, $customSni);
+                        $vray_link= json_encode($vraylink);
+                        $subLink = $botState['subLinkState']=="on"?$botUrl . "settings/subLink.php?token=" . $token:"";
+                    }
+        
+                    foreach($vraylink as $link){
+                        $acc_text = "
+        😍 سفارش جدید شما
+        📡 پروتکل: $protocol
+        🔮 نام سرویس: $remark
+        🔋حجم سرویس: $volume گیگ
+        ⏰ مدت سرویس: $days روز⁮⁮ ⁮⁮
+        " . ($botState['configLinkState'] != "off" && $serverType != "marzban"?"
+        💝 config : <code>$link</code>":"");
+        if($botState['subLinkState'] == "on") $acc_text .= "
+        
+        🔋 Volume web: <code> $botUrl"."search.php?id=".$uniqid."</code>
+        
+        \n🌐 subscription : <code>$subLink</code>";
+                    
+                        $file = RandomString() .".png";
+                        $ecc = 'L';
+                        $pixel_Size = 11;
+                        $frame_Size = 0;
+                        
+                        QRcode::png($link, $file, $ecc, $pixel_Size, $frame_Size);
+                        addBorderImage($file);
+                        
+                        $backgroundImage = imagecreatefromjpeg("settings/QRCode.jpg");
+                        $qrImage = imagecreatefrompng($file);
+                        
+                        $qrSize = array('width' => imagesx($qrImage), 'height' => imagesy($qrImage));
+                        imagecopy($backgroundImage, $qrImage, 300, 300 , 0, 0, $qrSize['width'], $qrSize['height']);
+                        imagepng($backgroundImage, $file);
+                        imagedestroy($backgroundImage);
+                        imagedestroy($qrImage);
+        
+                        sendPhoto($botUrl . $file, $acc_text,json_encode(['inline_keyboard'=>[[['text'=>$buttonValues['back_to_main'],'callback_data'=>"mainMenu"]]]]),"HTML", $uid);
+                        unlink($file);
+                    }
+                    
+                    $stmt = $connection->prepare("INSERT INTO `orders_list` 
+                        (`userid`, `token`, `transid`, `fileid`, `server_id`, `inbound_id`, `remark`, `uuid`, `protocol`, `expire_date`, `link`, `amount`, `status`, `date`, `notif`, `rahgozar`, `agent_bought`)
+                        VALUES (?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?, ?,1, ?, 0, ?, ?);");
+                    $stmt->bind_param("ssiiisssisiiii", $uid, $token, $fid, $server_id, $inbound_id, $remark, $uniqid, $protocol, $expire_date, $vray_link, $eachPrice, $date, $rahgozar, $agent_bought);
+                    $stmt->execute();
+                    $order = $stmt->get_result(); 
+                    $stmt->close();
+                }
+            
+                delMessage($msg);
+                if($userInfo['refered_by'] != null){
+                    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'INVITE_BANNER_AMOUNT'");
+                    $stmt->execute();
+                    $inviteAmount = $stmt->get_result()->fetch_assoc()['value']??0;
+                    $stmt->close();
+                    $inviterId = $userInfo['refered_by'];
+                    
+                    $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
+                    $stmt->bind_param("ii", $inviteAmount, $inviterId);
+                    $stmt->execute();
+                    $stmt->close();
+                     
+                    sendMessage("تبریک یکی از زیر مجموعه های شما خرید انجام داد شما مبلغ " . number_format($inviteAmount) . " تومان جایزه دریافت کردید",null,null,$inviterId);
+                }
+                if($inbound_id == 0) {
+                    $stmt = $connection->prepare("UPDATE `server_info` SET `ucount` = `ucount` - ? WHERE `id`=?");
+                    $stmt->bind_param("ii", $accountCount, $server_id);
+                    $stmt->execute();
+                    $stmt->close();
+                }else{
+                    $stmt = $connection->prepare("UPDATE `server_plans` SET `acount` = `acount` - ? WHERE id=?");
+                    $stmt->bind_param("ii", $accountCount, $fid);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            }
+            $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` - ? WHERE `userid` = ?");
+            $stmt->bind_param("ii", $price, $uid);
+            $stmt->execute();
+            $stmt->close();
+            
+            $keys = json_encode(['inline_keyboard'=>[
+                [
+                    ['text'=>"بنازم خرید جدید ❤️",'callback_data'=>"wizwizch"]
+                ],
+                ]]);
+            if($payInfo['type'] == "RENEW_SCONFIG"){$msg = str_replace(['TYPE', 'USER-ID', 'USERNAME', 'NAME', 'PRICE', 'REMARK', 'VOLUME', 'DAYS'],
+                        ['کیف پول', $from_id, $username, $first_name, $price, $remark,$volume, $days], $mainValues['renew_account_request_message']);}
+            else{$msg = str_replace(['SERVERNAME', 'TYPE', 'USER-ID', 'USERNAME', 'NAME', 'PRICE', 'REMARK', 'VOLUME', 'DAYS'],
+                        [$serverTitle, 'کیف پول', $from_id, $username, $first_name, $price, $remark,$volume, $days], $mainValues['buy_new_account_request']);}
+        
             sendMessage($msg,$keys,"html", $admin);
         }
     }
