@@ -1509,7 +1509,7 @@ function handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activation
         $diffAmount = $paymentAmount - $payedAmount;
         $percentageDiff = abs($diffAmount) / $paymentAmount * 100;
     
-        if ($percentageDiff > 5) {
+        if ($percentageDiff > 8) {
             sendMessage("⚠️ پرداخت با موفقیت انجام شد اما مبلغ ووچر پرداخت شده با مبلغ درخواستی متفاوت است.\n\n" .
                         "مبلغ ووچر: " . number_format($voucherAmount) . " $voucherCurrency\n" .
                         "شماره ووچر: $voucherNumber\n" .
@@ -1547,14 +1547,14 @@ function handlePerfectMoneyPaymentforservice($hash_id, $voucherCode, $activation
                 setUser();
                 exit();
             } else {
-                alert("مبلغ دریافتی را با موجودی کیف پولتان جمع زدیم شما در حال حاضر قادر به پرداخت هستید 😍");
+                alert("مبلغ دریافتی را با موجودی کیف پولتان جمع زدیم شما در حال حاضر قادر به پرداخت هزینه سرویس هستید 😍");
             }
             
     
         } else {
             
             $stmt = $connection->prepare("UPDATE `users` SET `wallet` = `wallet` + ? WHERE `userid` = ?");
-            $stmt->bind_param("di", $payedAmount, $userId);
+            $stmt->bind_param("di", $paymentAmount, $userId);
             $stmt->execute();
             $stmt->close();
 
