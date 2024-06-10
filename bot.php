@@ -777,7 +777,7 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     if($botState['paywithPerfectmoney'] == "on") $keyboard[] = [['text' => $buttonValues['perfectmoney'],  'callback_data' => "initincreaseWalletWithPerfectmoney" . $hash_id]];
     if($botState['nowPaymentWallet'] == "on") $keyboard[] = [['text' => $buttonValues['now_payment_gateway'],  'url' => $botUrl . "pay/?nowpayment&hash_id=" . $hash_id]];
     if($botState['zarinpal'] == "on") $keyboard[] = [['text' => $buttonValues['zarinpal_gateway'],  'url' => $botUrl . "pay/?zarinpal&hash_id=" . $hash_id]];
-    if($botState['nextpay'] == "on") $keyboard[] = [['text' => $buttonValues['nextpay_gateway'],  'callback_data' => "hirames" . $hash_id]];
+    if($botState['nextpay'] == "on") $keyboard[] = [['text' => $buttonValues['nextpay_gateway'],  'url' => $botUrl . "pay/?nextpay&hash_id=" . $hash_id]];
     if($botState['weSwapState'] == "on") $keyboard[] = [['text' => $buttonValues['weswap_gateway'],  'callback_data' => "payWithWeSwap" . $hash_id]];
     if($botState['tronWallet'] == "on") $keyboard[] = [['text' => $buttonValues['tron_gateway'],  'callback_data' => "payWithTronWallet" . $hash_id]];
 
@@ -788,27 +788,6 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
     sendMessage("اطلاعات شارژ:\nمبلغ ". number_format($text) . " تومان\n\nلطفا روش پرداخت را انتخاب کنید",$keys);
     setUser();
 }
-
-if (preg_match('/hirames/', $data)) {
-    delMessage();
-    $apiKey = "8d78daf2da075973daa0e319319c46"
-    // استخراج `hash_id` از `callback_data`
-    $hash_id = substr($data, strlen('hirames'));
-
-    // دکمه‌های مرحله اولیه
-    $keyboard []= [
-        [
-            ['text' => 'آموزش خرید با درگاه ریالی', 'callback_data' => 'hirames_tutorial'],
-            [['text' => 'هیرامس', 'web_app' => 'url' => "https://site.hirames.com/web/buy/?key= . $apiKey . "&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $wallet"]],
-            ['text' => 'پرداخت کردم✅', 'callback_data' => 'increaseWalletWithhirames' . $hash_id]
-        ]
-    ];
-    $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
-
-    sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
-    exit;
-}
-
 
 if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
     delMessage();
@@ -827,73 +806,6 @@ if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
 
     sendMessage("لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
     exit;
-}
-
-if (preg_match('/increaseWalletWithhirames/', $data)) {
-    $hash_id = substr($data, strlen('increaseWalletWithhirames'));
-
-    $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
-    $stmt->execute();
-    $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
-    $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
-    $stmt->close();
-
-    $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
-    $stmt->bind_param("s", $hash_id);
-    $stmt->execute();
-    $payInfo = $stmt->get_result()->fetch_assoc();
-    $stmt->close();
-
-    if ($payInfo) {
-        $paymentAmount = $payInfo['price'];
-
-        $trxpriceUrl = 'https://api.hirames.com/webservise?key=8d78daf2da075973daa0e319319c46&query=price';
-        $priceCurl = curl_init();
-        curl_setopt_array($priceCurl, array(
-            CURLOPT_URL => $trxpriceUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING => '',
-            CURLOPT_MAXREDIRS => 10,
-            CURLOPT_TIMEOUT => 0,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST => 'GET',
-        ));
-        $priceResponse = curl_exec($priceCurl);
-        curl_close($priceCurl);
-        $priceResponse = json_decode($priceResponse);
-        if ($priceResponse->result == true && isset($priceResponse->data->tron)) {
-            $tronPrice = $priceResponse->data->tron;
-            $tronCount = $paymentAmount / $tronPrice;
-
-            $keyboard = [
-                [
-                    'text' => 'پرداخت',
-                    'web_app' => [
-                        'url' => "https://site.hirames.com/web/buy/?key=8d78daf2da075973daa0e319319c46&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $paymentKeys['tronwallet']
-                    ]
-                ],
-                [
-                    'text' => 'پرداخت کردم',
-                    'callback_data' => 'proceedhirames' . $hash_id
-                ]
-            ];
-            $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
-
-            sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                "لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
-        } else {
-            sendMessage("خطا در دریافت قیمت ترون!", null, "HTML");
-        }
-    } else {
-        sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
-    }
-    exit;
-}
-
-if (preg_match('/proceedhirames/', $data)) {
-    $hash_id = substr($data, strlen('proceedhirames'));
-    // Logic to handle the proceeding payment action after user clicks "پرداخت کردم"
 }
 
 if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
