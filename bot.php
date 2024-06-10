@@ -850,12 +850,7 @@ if (preg_match('/increaseWalletWithhirames/', $data)) {
     if ($payInfo) {
         $paymentAmount = $payInfo['price'];
 
-        // دریافت نرخ ارز از API
-        $apiResponse = file_get_contents('https://api.tetherland.com/currencies');
-        $dollarPrice = json_decode($apiResponse, true)['data']['currencies']['USDT']['price'];
-        $amountInUSD = $paymentAmount / $dollarPrice;
-
-        $trxpriceUrl = 'https://api.hirames.com/webservise?key=' . $apiKey . '&query=price';
+        $trxpriceUrl = 'https://api.hirames.com/webservise?key=8d78daf2da075973daa0e319319c46&query=price';
         $priceCurl = curl_init();
         curl_setopt_array($priceCurl, array(
             CURLOPT_URL => $trxpriceUrl,
@@ -872,18 +867,18 @@ if (preg_match('/increaseWalletWithhirames/', $data)) {
         $priceResponse = json_decode($priceResponse);
         if ($priceResponse->result == true && isset($priceResponse->data->tron)) {
             $tronPrice = $priceResponse->data->tron;
-            $tronCount = $amountInUSD / $tronPrice;
+            $tronCount = $paymentAmount / $tronPrice; // اصلاح: تغییر از $amountInUSD به $paymentAmount
 
             $keyboard = [[
                 'text' => 'پرداخت',
                 'web_app' => [
-                    'url' => "https://site.hirames.com/web/buy/?key=" . $apiKey . "&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $wallet
+                    'url' => "https://site.hirames.com/web/buy/?key=8d78daf2da075973daa0e319319c46&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $paymentKeys['tronwallet']
                 ]
-                ],[
-                    'text' => 'پرداخت کردم',
-                    'callback_data' => 'proceedhirames'.  $hash_id
-                ]];
-            $cancelKey = json_encode(['inline_keyboard' => [$keyboard]]);
+            ],[
+                'text' => 'پرداخت کردم',
+                'callback_data' => 'proceedhirames'.  $hash_id
+            ]];
+            $cancelKey = json_encode(['inline_keyboard' => $keyboard]); // اصلاح: تغییر از [$keyboard] به $keyboard
 
             sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
                         "لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
