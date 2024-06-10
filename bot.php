@@ -829,24 +829,20 @@ if (preg_match('/initincreaseWalletWithPerfectmoney/', $data)) {
 }
 
 if (preg_match('/increaseWalletWithhirames/', $data)) {
-    // استخراج `hash_id` از `callback_data`
     $hash_id = substr($data, strlen('increaseWalletWithhirames'));
 
-    // دریافت کلیدهای پرداخت
     $stmt = $connection->prepare("SELECT * FROM `setting` WHERE `type` = 'PAYMENT_KEYS'");
     $stmt->execute();
     $paymentKeys = $stmt->get_result()->fetch_assoc()['value'];
     $paymentKeys = !is_null($paymentKeys) ? json_decode($paymentKeys, true) : array();
     $stmt->close();
 
-    // دریافت اطلاعات پرداخت از جدول `pays`
     $stmt = $connection->prepare("SELECT * FROM `pays` WHERE `hash_id` = ?");
     $stmt->bind_param("s", $hash_id);
     $stmt->execute();
     $payInfo = $stmt->get_result()->fetch_assoc();
     $stmt->close();
 
-    // بررسی اینکه آیا اطلاعات پرداخت به درستی بازیابی شده است
     if ($payInfo) {
         $paymentAmount = $payInfo['price'];
 
@@ -867,35 +863,37 @@ if (preg_match('/increaseWalletWithhirames/', $data)) {
         $priceResponse = json_decode($priceResponse);
         if ($priceResponse->result == true && isset($priceResponse->data->tron)) {
             $tronPrice = $priceResponse->data->tron;
-            $tronCount = $paymentAmount / $tronPrice; // اصلاح: تغییر از $amountInUSD به $paymentAmount
-
-            $keyboard = [[
-                'text' => 'پرداخت',
-                'web_app' => [
-                    'url' => "https://site.hirames.com/web/buy/?key=8d78daf2da075973daa0e319319c46&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $paymentKeys['tronwallet']
+            $tronCount = $paymentAmount / $tronPrice;
+            setUser("wallethiramesrialpayment" . $hash_id);
+            $keyboard = [
+                [
+                    'text' => 'پرداخت',
+                    'web_app' => [
+                        'url' => "https://site.hirames.com/web/buy/?key=8d78daf2da075973daa0e319319c46&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $paymentKeys['tronwallet']
+                    ]
+                ],
+                [
+                    'text' => 'پرداخت کردم',
+                    'callback_data' => 'proceedhirames' . $hash_id
                 ]
-            ],[
-                'text' => 'پرداخت کردم',
-                'callback_data' => 'proceedhirames'.  $hash_id
-            ]];
-            $cancelKey = json_encode(['inline_keyboard' => $keyboard]); // اصلاح: تغییر از [$keyboard] به $keyboard
+            ];
+            $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
 
             sendMessage("مبلغ پرداخت: " . number_format($paymentAmount) . " تومان\n" .
-                        "لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
+                "لطفا یکی از گزینه‌های زیر را انتخاب کنید:", $cancelKey, "HTML");
         } else {
             sendMessage("خطا در دریافت قیمت ترون!", null, "HTML");
         }
     } else {
-        // در صورت عدم یافتن اطلاعات پرداخت
         sendMessage("خطا: اطلاعات پرداخت یافت نشد.", null, "HTML");
     }
     exit;
 }
 
 if (preg_match('/proceedhirames/', $data)) {
-
+    $hash_id = substr($data, strlen('proceedhirames'));
+    // Logic to handle the proceeding payment action after user clicks "پرداخت کردم"
 }
-
 
 if (preg_match('/increaseWalletWithPerfectmoney/', $data)) {
     // استخراج `hash_id` از `callback_data`
