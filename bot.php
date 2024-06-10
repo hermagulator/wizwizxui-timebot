@@ -791,15 +791,16 @@ if($userInfo['step'] == "increaseMyWallet" && $text != $buttonValues['cancel']){
 
 if (preg_match('/hirames/', $data)) {
     delMessage();
-    
+    $apiKey = "8d78daf2da075973daa0e319319c46"
     // استخراج `hash_id` از `callback_data`
     $hash_id = substr($data, strlen('hirames'));
 
     // دکمه‌های مرحله اولیه
-    $keyboard = [
+    $keyboard []= [
         [
             ['text' => 'آموزش خرید با درگاه ریالی', 'callback_data' => 'hirames_tutorial'],
-            ['text' => 'ادامه خرید ✅', 'callback_data' => 'increaseWalletWithhirames' . $hash_id]
+            [['text' => 'هیرامس', 'web_app' => 'url' => "https://site.hirames.com/web/buy/?key= . $apiKey . "&id=" . $userId . "&count=" . $tronCount . "&wallet=" . $wallet"]],
+            ['text' => 'پرداخت کردم✅', 'callback_data' => 'increaseWalletWithhirames' . $hash_id]
         ]
     ];
     $cancelKey = json_encode(['inline_keyboard' => $keyboard]);
@@ -864,7 +865,7 @@ if (preg_match('/increaseWalletWithhirames/', $data)) {
         if ($priceResponse->result == true && isset($priceResponse->data->tron)) {
             $tronPrice = $priceResponse->data->tron;
             $tronCount = $paymentAmount / $tronPrice;
-            setUser("wallethiramesrialpayment" . $hash_id);
+
             $keyboard = [
                 [
                     'text' => 'پرداخت',
