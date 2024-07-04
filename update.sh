@@ -111,7 +111,7 @@ do
 			echo "Folder created successfully!"
 			
 			 cd /var/www/html/
-			 wget -O wizwizpanel.zip https://github.com/wizwizdev/wizwizxui-timebot/releases/download/10.1.3/wizwizpanel.zip
+			 wget -O wizwizpanel.zip https://github.com/wizwizdev/wizwizxui-timebot/releases/download/10.1.9/wizwizpanel.zip
 			
 			 file_to_transfer="/var/www/html/wizwizpanel.zip"
 			 destination_dir=$(find /var/www/html -type d -name "*${RANDOM_CODE}*" -print -quit)
@@ -210,7 +210,7 @@ do
 			break ;;
 		"Donate")
 			echo " "
-			echo -e "\n\e[91mBanksaderat ( nosrat ): \e[36m6037691526973185\033[0m\n\e[91mTron(trx): \e[36mTY8j7of18gbMtneB8bbL7SZk5gcntQEemG\n\e[91mBitcoin: \e[36mbc1qcnkjnqvs7kyxvlfrns8t4ely7x85dhvz5gqge4\033[0m\n"
+			echo -e "\n\e[91mBank ( 1212 ): \e[36m1212\033[0m\n\e[91mTron(trx): \e[36mTY8j7of18gbMtneB8bbL7SZk5gcntQEemG\n\e[91mBitcoin: \e[36mbc1qcnkjnqvs7kyxvlfrns8t4ely7x85dhvz5gqge4\033[0m\n"
 			exit 0
 			break ;;
 		"Exit")
